@@ -43,6 +43,57 @@ import { validateNonInteractiveAuth } from './validateNonInterActiveAuth.js';
 import { checkForUpdates } from './ui/utils/updateCheck.js';
 import { handleAutoUpdate } from './utils/handleAutoUpdate.js';
 import { appEvents, AppEvent } from './utils/events.js';
+import { promises as fs } from 'fs';
+import { resolve } from 'path';
+
+async function handleProviderCommand(argv: CliArgs) {
+  const configPath = resolve(process.cwd(), 'providers.json');
+  let config;
+  try {
+    const file = await fs.readFile(configPath, 'utf-8');
+    config = JSON.parse(file);
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      config = { providers: [], fallbackOrder: [] };
+    } else {
+      throw error;
+    }
+  }
+
+  switch (argv.action) {
+    case 'list':
+      console.log('Available providers:', config.providers);
+      break;
+    case 'set':
+      if (!argv.id) {
+        throw new Error('Provider ID is required to set the active provider.');
+      }
+      config.fallbackOrder = [
+        argv.id,
+        ...config.fallbackOrder.filter((p: string) => p !== argv.id),
+      ];
+      break;
+    case 'add':
+      if (!argv.id) {
+        throw new Error('Provider ID is required to add a new provider.');
+      }
+      config.providers.push({
+        id: argv.id,
+        apiKey: argv.apiKey,
+        enabled: true,
+      });
+      break;
+    default:
+      console.log(
+        'Invalid provider command. Available commands: list, set, add',
+      );
+      break;
+  }
+
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+  console.log('Provider configuration updated.');
+  // TODO: Reload ProviderManager
+}
 
 function getNodeMemoryArgs(config: Config): string[] {
   const totalMemoryMB = os.totalmem() / (1024 * 1024);
@@ -130,6 +181,10 @@ export async function main() {
   }
 
   const argv = await parseArguments();
+  if (argv._[0] === 'provider') {
+    await handleProviderCommand(argv);
+    process.exit(0);
+  }
   const extensions = loadExtensions(workspaceRoot);
   const config = await loadCliConfig(
     settings.merged,

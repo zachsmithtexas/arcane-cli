@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2025 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 // packages/core/src/providers/loader.ts
 
 /**
@@ -7,7 +13,7 @@
  * supporting dynamic loading, and handling fallbacks.
  */
 
-import {z} from 'zod';
+import { z } from 'zod';
 
 /**
  * Defines the schema for a single provider's configuration.
@@ -71,7 +77,10 @@ async function loadProviderAdapter(
     const adapterInstance: ProviderAdapter = new adapterModule.default();
     return adapterInstance;
   } catch (error) {
-    console.error(`Failed to load provider adapter for '${providerId}':`, error);
+    console.error(
+      `Failed to load provider adapter for '${providerId}':`,
+      error,
+    );
     throw new Error(`Provider adapter for '${providerId}' not found.`);
   }
 }
@@ -96,7 +105,7 @@ export class ProviderManager {
         try {
           const adapter = await loadProviderAdapter(providerConfig.id);
           this.providers.set(providerConfig.id, adapter);
-        } catch (error) {
+        } catch (_error) {
           console.warn(`Could not initialize provider '${providerConfig.id}'.`);
         }
       }

@@ -1,21 +1,31 @@
+/**
+ * @license
+ * Copyright 2025 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 // packages/core/src/providers/loader.test.ts
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { ProviderManager, ProvidersConfig } from './loader';
+import { ProviderManager, ProvidersConfig, ProviderAdapter } from './loader.js';
 
 // Mock the dynamic import
 vi.mock('./adapters/mock.ts', async (importOriginal) => {
-    const actual = await importOriginal() as { default: new () => any; };
-    return {
-        default: actual.default
-    };
+  const actual = (await importOriginal()) as {
+    default: new () => ProviderAdapter;
+  };
+  return {
+    default: actual.default,
+  };
 });
 
 vi.mock('./adapters/mock2.ts', async (importOriginal) => {
-    const actual = await importOriginal() as { default: new () => any; };
-    return {
-        default: actual.default
-    };
+  const actual = (await importOriginal()) as {
+    default: new () => ProviderAdapter;
+  };
+  return {
+    default: actual.default,
+  };
 });
 
 describe('ProviderManager', () => {
@@ -36,10 +46,10 @@ describe('ProviderManager', () => {
     await manager.initialize();
     const provider = manager.getProvider('mock');
     expect(provider).toBeDefined();
-    expect(provider.id).toBe('mock');
+    expect(provider!.id).toBe('mock');
     const provider2 = manager.getProvider('mock2');
     expect(provider2).toBeDefined();
-    expect(provider2.id).toBe('mock2');
+    expect(provider2!.id).toBe('mock2');
   });
 
   it('should not load disabled providers', async () => {
@@ -55,7 +65,9 @@ describe('ProviderManager', () => {
   it('should throw an error if no providers can be initialized', async () => {
     config.providers = [];
     const manager = new ProviderManager(config);
-    await expect(manager.initialize()).rejects.toThrow('No AI providers could be initialized.');
+    await expect(manager.initialize()).rejects.toThrow(
+      'No AI providers could be initialized.',
+    );
   });
 
   it('should return the primary provider', async () => {
@@ -69,7 +81,9 @@ describe('ProviderManager', () => {
   it('should use fallback provider if primary fails', async () => {
     const manager = new ProviderManager(config);
     await manager.initialize();
-    const mockProvider = manager.getProvider('mock') as any;
+    const mockProvider = manager.getProvider('mock') as ProviderAdapter & {
+      shouldFail: boolean;
+    };
     mockProvider.shouldFail = true;
 
     const response = await manager.generateContentWithFallback('test');

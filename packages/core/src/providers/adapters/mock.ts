@@ -1,13 +1,19 @@
+/**
+ * @license
+ * Copyright 2025 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 // packages/core/src/providers/adapters/mock.ts
 
-import { ProviderAdapter } from '../loader';
+import { ProviderAdapter } from '../loader.js';
 
 /**
  * A mock provider adapter for testing purposes.
  */
 export default class MockAdapter implements ProviderAdapter {
-  public readonly id = 'mock';
-  public shouldFail = false;
+  readonly id = 'mock';
+  shouldFail = false;
 
   /**
    * Simulates generating content.

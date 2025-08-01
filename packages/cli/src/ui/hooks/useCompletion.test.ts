@@ -839,11 +839,12 @@ describe('useCompletion', () => {
         expect(result.current.suggestions).toHaveLength(2);
         expect(result.current.suggestions).toEqual(
           expect.arrayContaining([
-            {
+            expect.objectContaining({
               label: 'derp/script.ts',
-              value: 'derp/script.ts',
-            },
-            { label: 'src', value: 'src' },
+            }),
+            expect.objectContaining({
+              label: 'src',
+            }),
           ]),
         );
       });

@@ -63,6 +63,10 @@ export interface CliArgs {
   ideModeFeature: boolean | undefined;
   proxy: string | undefined;
   includeDirectories: string[] | undefined;
+  action: string | undefined;
+  id: string | undefined;
+  apiKey: string | undefined;
+  _: Array<string | number>;
 }
 
 export async function parseArguments(): Promise<CliArgs> {
@@ -222,6 +226,22 @@ export async function parseArguments(): Promise<CliArgs> {
         );
       }
       return true;
+    })
+    .command('provider <action>', 'Manage provider configurations', (yargs) => {
+      yargs
+        .positional('action', {
+          describe: 'The action to perform',
+          type: 'string',
+          choices: ['list', 'set', 'add'],
+        })
+        .option('id', {
+          type: 'string',
+          description: 'The ID of the provider',
+        })
+        .option('api-key', {
+          type: 'string',
+          description: 'The API key for the provider',
+        });
     });
 
   yargsInstance.wrap(yargsInstance.terminalWidth());
@@ -229,7 +249,7 @@ export async function parseArguments(): Promise<CliArgs> {
 
   // The import format is now only controlled by settings.memoryImportFormat
   // We no longer accept it as a CLI argument
-  return result as CliArgs;
+  return result as unknown as CliArgs;
 }
 
 // This function is now a thin wrapper around the server's implementation.

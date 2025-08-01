@@ -1,13 +1,19 @@
+/**
+ * @license
+ * Copyright 2025 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 // packages/core/src/providers/adapters/gemini.ts
 
-import { GoogleGenerativeAI } from '@google/genai';
-import { ProviderAdapter } from '../loader';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ProviderAdapter } from '../loader.js';
 
 /**
  * An adapter for the Google Gemini provider.
  */
 export default class GeminiAdapter implements ProviderAdapter {
-  public readonly id = 'gemini';
+  readonly id = 'gemini';
   private genAI: GoogleGenerativeAI;
 
   constructor(apiKey?: string) {
