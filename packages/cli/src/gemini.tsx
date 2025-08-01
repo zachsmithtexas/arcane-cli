@@ -541,6 +541,43 @@ export async function main() {
   }
 
   const argv = await parseArguments();
+  if (argv._[0] === 'generate') {
+    // Track generate command usage
+    let startTime = Date.now();
+    try {
+      const { handleGenerateCommand } = await import('./commands/generateCommand.js');
+      const { getUsageStatsManager } = await import('@google/gemini-cli-core');
+      const usageStats = getUsageStatsManager();
+      const commandName = `generate ${argv.type}`;
+      
+      await handleGenerateCommand({
+        type: argv.type!,
+        name: argv.name,
+        template: argv.template,
+        interactive: argv.interactive,
+        list: argv.list,
+        search: argv.search,
+        output: argv.output,
+        dryRun: argv.dryRun,
+        overwrite: argv.overwrite,
+      });
+      
+      const executionTime = Date.now() - startTime;
+      await usageStats.recordCommand(commandName, executionTime, true);
+    } catch (error) {
+      try {
+        const { getUsageStatsManager } = await import('@google/gemini-cli-core');
+        const usageStats = getUsageStatsManager();
+        const commandName = `generate ${argv.type}`;
+        const executionTime = Date.now() - startTime;
+        await usageStats.recordCommand(commandName, executionTime, false);
+      } catch {
+        // Ignore stats errors
+      }
+      throw error;
+    }
+    process.exit(0);
+  }
   if (argv._[0] === 'provider') {
     // Track provider command usage
     let startTime = Date.now();

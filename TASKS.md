@@ -29,7 +29,7 @@
 
 ## 2. Agent, Role & Skill System
 
-- [ ] **Scripted Agent/Role/Skill Generation (`cli/generate.js`):**  
+- [x] **Scripted Agent/Role/Skill Generation (`cli/generate.js`):**  
        Create scripts to generate and assign new agents, roles, and skills from CLI with guided prompts.  
        _Criteria:_ CLI command scaffolds markdown files, supports fuzzy search, writes to `.arcane/` structure.  
        _File:_ `cli/generate.js`

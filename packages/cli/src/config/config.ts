@@ -72,6 +72,16 @@ export interface CliArgs {
   clear: boolean | undefined; // For clearing stats
   provider: string | undefined; // For provider operations
   key: string | undefined; // For key operations
+  // Generate command options
+  type: 'agent' | 'role' | 'skill' | undefined; // For generate command
+  name: string | undefined; // For generate command
+  template: string | undefined; // For generate command
+  interactive: boolean | undefined; // For generate command
+  list: boolean | undefined; // For generate command
+  search: string | undefined; // For generate command
+  output: string | undefined; // For generate command
+  dryRun: boolean | undefined; // For generate command
+  overwrite: boolean | undefined; // For generate command
   _: Array<string | number>;
 }
 
@@ -232,6 +242,54 @@ export async function parseArguments(): Promise<CliArgs> {
         );
       }
       return true;
+    })
+    .command('generate <type>', 'Generate agents, roles, and skills', (yargs) => {
+      yargs
+        .positional('type', {
+          describe: 'The type of item to generate',
+          type: 'string',
+          choices: ['agent', 'role', 'skill'],
+        })
+        .option('name', {
+          type: 'string',
+          description: 'Name for the new item',
+          alias: 'n',
+        })
+        .option('template', {
+          type: 'string', 
+          description: 'Use a predefined template',
+          alias: 't',
+        })
+        .option('interactive', {
+          type: 'boolean',
+          description: 'Use interactive prompts',
+          default: true,
+        })
+        .option('list', {
+          type: 'boolean',
+          description: 'List existing items',
+          alias: 'l',
+        })
+        .option('search', {
+          type: 'string',
+          description: 'Search existing items',
+          alias: 's',
+        })
+        .option('output', {
+          type: 'string',
+          description: 'Output directory',
+          alias: 'o',
+        })
+        .option('dry-run', {
+          type: 'boolean',
+          description: 'Show what would be created without creating files',
+          default: false,
+        })
+        .option('overwrite', {
+          type: 'boolean',
+          description: 'Overwrite existing files',
+          default: false,
+        });
     })
     .command('provider <action>', 'Manage provider configurations', (yargs) => {
       yargs
