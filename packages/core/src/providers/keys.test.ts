@@ -31,8 +31,8 @@ describe('ProviderKeyManager', () => {
 
     it('should initialize with ApiKeyMetadata objects', () => {
       const metadataKeys: ApiKeyMetadata[] = [
-        { key: 'meta-key-1', status: KeyStatus.ACTIVE, failureCount: 0 },
-        { key: 'meta-key-2', status: KeyStatus.RATE_LIMITED, failureCount: 1 },
+        { key: 'meta-key-1', status: KeyStatus.ACTIVE, failureCount: 0, dailyUsageCount: 0 },
+        { key: 'meta-key-2', status: KeyStatus.RATE_LIMITED, failureCount: 1, dailyUsageCount: 0 },
       ];
       
       const manager = new ProviderKeyManager('test', metadataKeys);
@@ -48,8 +48,8 @@ describe('ProviderKeyManager', () => {
 
     it('should find first active key when some are disabled', () => {
       const keys: ApiKeyMetadata[] = [
-        { key: 'disabled-key', status: KeyStatus.FAILED, failureCount: 5 },
-        { key: 'active-key', status: KeyStatus.ACTIVE, failureCount: 0 },
+        { key: 'disabled-key', status: KeyStatus.FAILED, failureCount: 5, dailyUsageCount: 0 },
+        { key: 'active-key', status: KeyStatus.ACTIVE, failureCount: 0, dailyUsageCount: 0 },
       ];
       
       const manager = new ProviderKeyManager('test', keys);

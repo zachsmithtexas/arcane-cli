@@ -68,6 +68,10 @@ export interface CliArgs {
   apiKey: string | undefined;
   subcommand: string | undefined; // For provider keys subcommands
   status: boolean | undefined; // For showing key status
+  export: string | undefined; // For exporting stats
+  clear: boolean | undefined; // For clearing stats
+  provider: string | undefined; // For provider operations
+  key: string | undefined; // For key operations
   _: Array<string | number>;
 }
 
@@ -234,7 +238,7 @@ export async function parseArguments(): Promise<CliArgs> {
         .positional('action', {
           describe: 'The action to perform',
           type: 'string',
-          choices: ['list', 'set', 'add', 'keys'],
+          choices: ['list', 'set', 'add', 'keys', 'stats'],
         })
         .option('id', {
           type: 'string',
@@ -264,6 +268,23 @@ export async function parseArguments(): Promise<CliArgs> {
             .option('status', {
               type: 'boolean',
               description: 'Show detailed status information',
+              default: false,
+            });
+        })
+        .command('stats <subcommand>', 'View usage statistics and analytics', (yargs) => {
+          yargs
+            .positional('subcommand', {
+              describe: 'Statistics action',
+              type: 'string',
+              choices: ['summary', 'providers', 'commands', 'sessions', 'export', 'clear'],
+            })
+            .option('export', {
+              type: 'string',
+              description: 'Export statistics to file path',
+            })
+            .option('clear', {
+              type: 'boolean',
+              description: 'Clear all usage statistics',
               default: false,
             });
         });

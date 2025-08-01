@@ -111,19 +111,20 @@ async function handleProviderCommand(argv: CliArgs) {
       console.log(`Added provider '${argv.id}'.`);
       break;
 
-    case 'keys':
-      await handleKeyCommand(config, argv);
+    case 'stats':
+      await handleStatsCommand(config, argv);
       break;
 
     default:
       console.log(
-        'Invalid provider command. Available commands: list, set, add, keys',
+        'Invalid provider command. Available commands: list, set, add, keys, stats',
       );
       return; // Don't save config for invalid commands
   }
 
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
-  if (argv.action !== 'keys') {
+  // Only show update message for basic provider operations
+  if (argv.action === 'list' || argv.action === 'set' || argv.action === 'add') {
     console.log('Provider configuration updated.');
   }
   // TODO: Reload ProviderManager
@@ -261,6 +262,164 @@ async function handleKeyCommand(config: any, argv: CliArgs) {
   }
 }
 
+async function handleStatsCommand(config: any, argv: CliArgs) {
+  const { getUsageStatsManager } = await import('@google/gemini-cli-core');
+  const usageStats = getUsageStatsManager();
+  
+  const subcommand = argv.subcommand || argv._[1]; // Handle both direct and nested commands
+  
+  switch (subcommand) {
+    case 'summary':
+      const report = usageStats.generateSummaryReport();
+      console.log('\n📊 Usage Statistics Summary:');
+      console.log(`Total Sessions: ${report.totalSessions}`);
+      console.log(`Total Commands: ${report.totalCommands}`);
+      console.log(`Total Failures: ${report.totalFailures}`);
+      
+      if (report.averageSessionLength > 0) {
+        const avgMinutes = Math.round(report.averageSessionLength / 60000);
+        console.log(`Average Session Length: ${avgMinutes} minutes`);
+      }
+      
+      if (report.topCommands.length > 0) {
+        console.log('\n🔥 Most Used Commands:');
+        report.topCommands.forEach((cmd, index) => {
+          console.log(`  ${index + 1}. ${cmd.command} (${cmd.count} uses)`);
+        });
+      }
+      
+      if (report.providerReliability.length > 0) {
+        console.log('\n⚡ Provider Reliability:');
+        report.providerReliability.forEach((provider, index) => {
+          const successRate = (provider.successRate * 100).toFixed(1);
+          const indicator = provider.successRate > 0.9 ? '🟢' : provider.successRate > 0.7 ? '🟡' : '🔴';
+          console.log(`  ${index + 1}. ${provider.provider} ${indicator} ${successRate}% (${provider.totalRequests} requests)`);
+        });
+      }
+      break;
+
+    case 'providers':
+      const providerStats = usageStats.getProviderStats();
+      console.log('\n📡 Provider Usage Statistics:');
+      
+      if (Object.keys(providerStats).length === 0) {
+        console.log('  No provider usage data available.');
+        break;
+      }
+      
+      Object.entries(providerStats).forEach(([providerId, stats]) => {
+        const successRate = stats.totalRequests > 0 ? (stats.successfulRequests / stats.totalRequests * 100).toFixed(1) : '0.0';
+        const avgResponseTime = stats.averageResponseTime > 0 ? `${Math.round(stats.averageResponseTime)}ms` : 'N/A';
+        
+        console.log(`\n🔧 ${providerId}:`);
+        console.log(`  Total Requests: ${stats.totalRequests}`);
+        console.log(`  Success Rate: ${successRate}%`);
+        console.log(`  Average Response Time: ${avgResponseTime}`);
+        console.log(`  Key Rotations: ${stats.keyRotationCount}`);
+        console.log(`  Rate Limit Hits: ${stats.rateLimitHits}`);
+        
+        if (Object.keys(stats.failuresByReason).length > 0) {
+          console.log('  Failure Breakdown:');
+          Object.entries(stats.failuresByReason).forEach(([reason, count]) => {
+            console.log(`    ${reason}: ${count}`);
+          });
+        }
+        
+        if (stats.lastUsed) {
+          const lastUsed = new Date(stats.lastUsed).toLocaleString();
+          console.log(`  Last Used: ${lastUsed}`);
+        }
+      });
+      break;
+
+    case 'commands':
+      const commandStats = usageStats.getCommandStats();
+      console.log('\n⌨️ Command Usage Statistics:');
+      
+      if (Object.keys(commandStats).length === 0) {
+        console.log('  No command usage data available.');
+        break;
+      }
+      
+      const sortedCommands = Object.values(commandStats).sort((a, b) => b.usageCount - a.usageCount);
+      
+      sortedCommands.forEach((cmd, index) => {
+        const successRate = cmd.usageCount > 0 ? (cmd.successCount / cmd.usageCount * 100).toFixed(1) : '0.0';
+        const avgTime = cmd.averageExecutionTime > 0 ? `${Math.round(cmd.averageExecutionTime)}ms` : 'N/A';
+        
+        console.log(`\n${index + 1}. ${cmd.command}:`);
+        console.log(`  Usage Count: ${cmd.usageCount}`);
+        console.log(`  Success Rate: ${successRate}%`);
+        console.log(`  Average Execution Time: ${avgTime}`);
+        
+        if (cmd.lastUsed) {
+          const lastUsed = new Date(cmd.lastUsed).toLocaleString();
+          console.log(`  Last Used: ${lastUsed}`);
+        }
+      });
+      break;
+
+    case 'sessions':
+      const recentSessions = usageStats.getRecentSessions(10);
+      console.log('\n🕐 Recent Sessions:');
+      
+      if (recentSessions.length === 0) {
+        console.log('  No session data available.');
+        break;
+      }
+      
+      recentSessions.reverse().forEach((session, index) => {
+        const startTime = new Date(session.startTime).toLocaleString();
+        const duration = session.endTime 
+          ? `${Math.round((session.endTime - session.startTime) / 60000)} minutes`
+          : 'Ongoing';
+        
+        console.log(`\n${index + 1}. Session ${session.sessionId}:`);
+        console.log(`  Started: ${startTime}`);
+        console.log(`  Duration: ${duration}`);
+        console.log(`  Commands Executed: ${session.commandsExecuted}`);
+        console.log(`  Tool Calls: ${session.toolCallsExecuted}`);
+        console.log(`  Tokens Used: ${session.totalTokensUsed}`);
+        console.log(`  Providers Used: ${session.providersUsed.join(', ') || 'None'}`);
+      });
+      break;
+
+    case 'export':
+      if (!argv.export) {
+        console.error('Export file path is required. Use --export <path>');
+        break;
+      }
+      
+      try {
+        await usageStats.exportStats(argv.export);
+        console.log(`✅ Usage statistics exported to: ${argv.export}`);
+      } catch (error) {
+        console.error('❌ Failed to export statistics:', error);
+      }
+      break;
+
+    case 'clear':
+      if (!argv.clear) {
+        console.log('Use --clear to confirm clearing all usage statistics.');
+        break;
+      }
+      
+      try {
+        await usageStats.clearStats();
+        console.log('✅ All usage statistics have been cleared.');
+      } catch (error) {
+        console.error('❌ Failed to clear statistics:', error);
+      }
+      break;
+
+    default:
+      console.log(
+        'Invalid stats command. Available commands: summary, providers, commands, sessions, export, clear',
+      );
+      break;
+  }
+}
+
 function getNodeMemoryArgs(config: Config): string[] {
   const totalMemoryMB = os.totalmem() / (1024 * 1024);
   const heapStats = v8.getHeapStatistics();
@@ -328,10 +487,45 @@ ${reason.stack}`
   });
 }
 
+function generateSessionId(): string {
+  return `cli-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+}
+
 export async function main() {
   setupUnhandledRejectionHandler();
   const workspaceRoot = process.cwd();
   const settings = loadSettings(workspaceRoot);
+
+  // Initialize usage statistics tracking
+  try {
+    const { initializeUsageStats, getUsageStatsManager } = await import('@google/gemini-cli-core');
+    await initializeUsageStats({
+      enabled: true, // Can be controlled by settings later
+      anonymizationEnabled: true,
+    });
+    
+    // Start session tracking
+    const sessionId = generateSessionId();
+    const usageStats = getUsageStatsManager();
+    await usageStats.startSession(sessionId);
+    
+    // Track session end on process exit
+    const cleanup = async () => {
+      await usageStats.endSession();
+    };
+    process.on('exit', cleanup);
+    process.on('SIGINT', async () => {
+      await cleanup();
+      process.exit(0);
+    });
+    process.on('SIGTERM', async () => {
+      await cleanup();
+      process.exit(0);
+    });
+  } catch (error) {
+    // Continue if usage stats fail to initialize
+    console.warn('Failed to initialize usage statistics:', error);
+  }
 
   await cleanupCheckpoints();
   if (settings.errors.length > 0) {
@@ -348,7 +542,29 @@ export async function main() {
 
   const argv = await parseArguments();
   if (argv._[0] === 'provider') {
-    await handleProviderCommand(argv);
+    // Track provider command usage
+    let startTime = Date.now();
+    try {
+      const { getUsageStatsManager } = await import('@google/gemini-cli-core');
+      const usageStats = getUsageStatsManager();
+      const commandName = `provider ${argv.action}`;
+      
+      await handleProviderCommand(argv);
+      
+      const executionTime = Date.now() - startTime;
+      await usageStats.recordCommand(commandName, executionTime, true);
+    } catch (error) {
+      try {
+        const { getUsageStatsManager } = await import('@google/gemini-cli-core');
+        const usageStats = getUsageStatsManager();
+        const commandName = `provider ${argv.action}`;
+        const executionTime = Date.now() - startTime;
+        await usageStats.recordCommand(commandName, executionTime, false);
+      } catch {
+        // Ignore stats errors
+      }
+      throw error;
+    }
     process.exit(0);
   }
   const extensions = loadExtensions(workspaceRoot);

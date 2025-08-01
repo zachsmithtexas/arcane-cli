@@ -22,7 +22,7 @@
        _Criteria:_ Automatic key fallback, CLI flag to view/set active key, logs failures.  
        _File:_ `/core/providers/keys.js`
 
-- [ ] **Track Usage Stats & Provider Failures:**  
+- [x] **Track Usage Stats & Provider Failures:**  
        Build anonymized tracking of command frequency and provider success/failures (toggleable).  
        _Criteria:_ Stats logged locally, opt-out available.  
        _File:_ `/core/telemetry.js`

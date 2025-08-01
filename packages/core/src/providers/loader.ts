@@ -20,6 +20,7 @@ import {
   GlobalKeyManager, 
   KeyFailureReason 
 } from './keys.js';
+import { getUsageStatsManager } from '../telemetry/usageStats.js';
 
 /**
  * Defines the schema for a single provider's configuration.
@@ -199,6 +200,7 @@ export class ProviderManager {
    */
   async generateContentWithFallback(prompt: string): Promise<string> {
     const maxRetries = 3;
+    const usageStats = getUsageStatsManager();
     
     for (const providerId of this.fallbackOrder) {
       const provider = this.getProvider(providerId);
@@ -208,6 +210,8 @@ export class ProviderManager {
 
       // Try current provider with key rotation support
       for (let attempt = 0; attempt < maxRetries; attempt++) {
+        const startTime = Date.now();
+        
         try {
           // Get current key for this provider
           const currentKey = this.keyManager.getCurrentKey(providerId);
@@ -221,12 +225,16 @@ export class ProviderManager {
 
           // Attempt to generate content
           const result = await provider.generateContent(prompt);
+          const responseTime = Date.now() - startTime;
           
           // Record success
           this.keyManager.recordSuccess(providerId);
+          await usageStats.recordProviderUsage(providerId, true, responseTime);
+          
           return result;
           
         } catch (error) {
+          const responseTime = Date.now() - startTime;
           console.warn(`Provider '${providerId}' failed (attempt ${attempt + 1}):`, error);
           
           // Determine failure reason and handle key rotation
@@ -236,6 +244,14 @@ export class ProviderManager {
             failureReason,
             error instanceof Error ? error.message : String(error)
           );
+
+          // Record provider failure in usage stats
+          await usageStats.recordProviderUsage(providerId, false, responseTime, 0, failureReason);
+          
+          // Record key rotation if it occurred
+          if (rotated) {
+            await usageStats.recordKeyRotation(providerId);
+          }
 
           // If we couldn't rotate to a new key, break and try next provider
           if (!rotated) {
