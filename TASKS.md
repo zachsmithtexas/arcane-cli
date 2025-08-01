@@ -7,7 +7,7 @@
   *Criteria:* Supports hot-swapping, dynamic loading, and fallback logic.  
   *File:* `/core/providers/loader.js`
 
-- [ ] **Add Provider Adapter Pattern:**  
+- [x] **Add Provider Adapter Pattern:**  
   Refactor the API interaction layer to use an adapter interface for each provider.  
   *Criteria:* Easy to add new providers, standardized interface, with tests.  
   *File:* `/core/providers/adapters/`
