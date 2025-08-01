@@ -54,12 +54,10 @@ describe('ProviderManager', () => {
 
   it('should support legacy single apiKey format', async () => {
     const legacyConfig: ProvidersConfig = {
-      providers: [
-        { id: 'mock', enabled: true, apiKey: 'legacy-key' },
-      ],
+      providers: [{ id: 'mock', enabled: true, apiKey: 'legacy-key' }],
       fallbackOrder: ['mock'],
     };
-    
+
     const manager = new ProviderManager(legacyConfig);
     await manager.initialize();
     expect(manager.getProvider('mock')).toBeDefined();
@@ -73,7 +71,7 @@ describe('ProviderManager', () => {
       ],
       fallbackOrder: ['mock', 'mock2'],
     };
-    
+
     const manager = new ProviderManager(noKeyConfig);
     await manager.initialize();
     expect(manager.getProvider('mock')).toBeUndefined();
@@ -124,11 +122,11 @@ describe('ProviderManager', () => {
   it('should handle key rotation on failures', async () => {
     const manager = new ProviderManager(config);
     await manager.initialize();
-    
+
     // Get initial key stats
     const initialStats = manager.getKeyStats();
     expect(initialStats['mock'].activeKeys).toBe(2);
-    
+
     // Simulate a failure that would trigger key rotation
     const mockProvider = manager.getProvider('mock') as ProviderAdapter & {
       shouldFail: boolean;
@@ -162,7 +160,7 @@ describe('ProviderManager', () => {
   it('should provide key statistics', async () => {
     const manager = new ProviderManager(config);
     await manager.initialize();
-    
+
     const stats = manager.getKeyStats();
     expect(stats['mock']).toBeDefined();
     expect(stats['mock'].totalKeys).toBe(2);
@@ -174,7 +172,7 @@ describe('ProviderManager', () => {
   it('should reset expired keys', async () => {
     const manager = new ProviderManager(config);
     await manager.initialize();
-    
+
     // Should not throw
     manager.resetExpiredKeys();
   });
@@ -182,10 +180,10 @@ describe('ProviderManager', () => {
   it('should access key manager', async () => {
     const manager = new ProviderManager(config);
     await manager.initialize();
-    
+
     const keyManager = manager.getKeyManager();
     expect(keyManager).toBeDefined();
-    
+
     const globalStats = keyManager.getGlobalStats();
     expect(globalStats['mock']).toBeDefined();
     expect(globalStats['mock2']).toBeDefined();

@@ -8,7 +8,7 @@
 
 /**
  * @fileoverview Interactive agent, role, and skill generation with guided prompts.
- * 
+ *
  * This module provides interactive CLI prompts for creating agents, roles, and skills
  * with validation, templates, and user-friendly guidance.
  */
@@ -18,9 +18,6 @@ import {
   GenerationOptions,
   SkillLevel,
   Priority,
-  Agent,
-  Role,
-  Skill,
 } from './types.js';
 import { AgentManager } from './manager.js';
 
@@ -30,21 +27,37 @@ import { AgentManager } from './manager.js';
 export interface PromptInterface {
   text(message: string, initial?: string): Promise<string>;
   confirm(message: string, initial?: boolean): Promise<boolean>;
-  select(message: string, choices: Array<{ title: string; value: any }>): Promise<any>;
-  multiselect(message: string, choices: Array<{ title: string; value: any; selected?: boolean }>): Promise<any[]>;
-  number(message: string, initial?: number, min?: number, max?: number): Promise<number>;
+  select(
+    message: string,
+    choices: Array<{ title: string; value: unknown }>,
+  ): Promise<unknown>;
+  multiselect(
+    message: string,
+    choices: Array<{ title: string; value: unknown; selected?: boolean }>,
+  ): Promise<unknown[]>;
+  number(
+    message: string,
+    initial?: number,
+    min?: number,
+    max?: number,
+  ): Promise<number>;
 }
 
 /**
  * Interactive generator for agents, roles, and skills.
  */
 export class InteractiveGenerator {
-  constructor(private prompter: PromptInterface, private agentManager: AgentManager) {}
+  constructor(
+    private prompter: PromptInterface,
+    private agentManager: AgentManager,
+  ) {}
 
   /**
    * Interactively creates a new agent.
    */
-  async generateAgent(options: GenerationOptions = { interactive: true }): Promise<string> {
+  async generateAgent(
+    options: GenerationOptions = { interactive: true },
+  ): Promise<string> {
     console.log('🤖 Creating a new agent...\n');
 
     // Basic information
@@ -60,20 +73,35 @@ export class InteractiveGenerator {
 
     // Personality and instructions
     const personality = await this.prompter.text('Personality (optional):', '');
-    const instructions = await this.prompter.text('Special instructions (optional):', '');
-    const systemPrompt = await this.prompter.text('System prompt (optional):', '');
+    const instructions = await this.prompter.text(
+      'Special instructions (optional):',
+      '',
+    );
+    const systemPrompt = await this.prompter.text(
+      'System prompt (optional):',
+      '',
+    );
 
     // Model configuration
-    const configureModel = await this.prompter.confirm('Configure model settings?', false);
+    const configureModel = await this.prompter.confirm(
+      'Configure model settings?',
+      false,
+    );
     let model: string | undefined;
     let temperature: number | undefined;
     let maxTokens: number | undefined;
 
     if (configureModel) {
       model = await this.prompter.text('Model name (optional):', '');
-      const tempInput = await this.prompter.text('Temperature (0-2, optional):', '');
-      const tokensInput = await this.prompter.text('Max tokens (optional):', '');
-      
+      const tempInput = await this.prompter.text(
+        'Temperature (0-2, optional):',
+        '',
+      );
+      const tokensInput = await this.prompter.text(
+        'Max tokens (optional):',
+        '',
+      );
+
       if (tempInput) {
         temperature = parseFloat(tempInput);
         if (isNaN(temperature) || temperature < 0 || temperature > 2) {
@@ -81,7 +109,7 @@ export class InteractiveGenerator {
           temperature = undefined;
         }
       }
-      
+
       if (tokensInput) {
         maxTokens = parseInt(tokensInput, 10);
         if (isNaN(maxTokens) || maxTokens <= 0) {
@@ -92,12 +120,12 @@ export class InteractiveGenerator {
     }
 
     // Priority
-    const priority = await this.prompter.select('Priority level:', [
+    const priority = (await this.prompter.select('Priority level:', [
       { title: 'Low', value: Priority.LOW },
       { title: 'Medium', value: Priority.MEDIUM },
       { title: 'High', value: Priority.HIGH },
       { title: 'Critical', value: Priority.CRITICAL },
-    ]);
+    ])) as Priority;
 
     // Roles and skills
     const roles = await this.selectRoles();
@@ -105,10 +133,17 @@ export class InteractiveGenerator {
     const tools = await this.selectTools();
 
     // Tags
-    const tagsInput = await this.prompter.text('Tags (comma-separated, optional):', '');
-    const tags = tagsInput && typeof tagsInput === 'string' 
-      ? tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0) 
-      : [];
+    const tagsInput = await this.prompter.text(
+      'Tags (comma-separated, optional):',
+      '',
+    );
+    const tags =
+      tagsInput && typeof tagsInput === 'string'
+        ? tagsInput
+            .split(',')
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0)
+        : [];
 
     // Create template
     const template: GenerationTemplate = {
@@ -137,7 +172,9 @@ export class InteractiveGenerator {
   /**
    * Interactively creates a new role.
    */
-  async generateRole(options: GenerationOptions = { interactive: true }): Promise<string> {
+  async generateRole(
+    options: GenerationOptions = { interactive: true },
+  ): Promise<string> {
     console.log('👔 Creating a new role...\n');
 
     // Basic information
@@ -153,12 +190,20 @@ export class InteractiveGenerator {
 
     // Responsibilities
     const responsibilities: string[] = [];
-    const addResponsibilities = await this.prompter.confirm('Add responsibilities?', true);
-    
+    const addResponsibilities = await this.prompter.confirm(
+      'Add responsibilities?',
+      true,
+    );
+
     if (addResponsibilities) {
-      console.log('\nEnter responsibilities (press Enter with empty input to finish):');
+      console.log(
+        '\nEnter responsibilities (press Enter with empty input to finish):',
+      );
       while (true) {
-        const responsibility = await this.prompter.text(`Responsibility ${responsibilities.length + 1}:`, '');
+        const responsibility = await this.prompter.text(
+          `Responsibility ${responsibilities.length + 1}:`,
+          '',
+        );
         if (!responsibility) break;
         responsibilities.push(responsibility);
       }
@@ -170,12 +215,20 @@ export class InteractiveGenerator {
 
     // Permissions
     const permissions: string[] = [];
-    const addPermissions = await this.prompter.confirm('Add permissions?', false);
-    
+    const addPermissions = await this.prompter.confirm(
+      'Add permissions?',
+      false,
+    );
+
     if (addPermissions) {
-      console.log('\nEnter permissions (press Enter with empty input to finish):');
+      console.log(
+        '\nEnter permissions (press Enter with empty input to finish):',
+      );
       while (true) {
-        const permission = await this.prompter.text(`Permission ${permissions.length + 1}:`, '');
+        const permission = await this.prompter.text(
+          `Permission ${permissions.length + 1}:`,
+          '',
+        );
         if (!permission) break;
         permissions.push(permission);
       }
@@ -183,30 +236,45 @@ export class InteractiveGenerator {
 
     // Restrictions
     const restrictions: string[] = [];
-    const addRestrictions = await this.prompter.confirm('Add restrictions?', false);
-    
+    const addRestrictions = await this.prompter.confirm(
+      'Add restrictions?',
+      false,
+    );
+
     if (addRestrictions) {
-      console.log('\nEnter restrictions (press Enter with empty input to finish):');
+      console.log(
+        '\nEnter restrictions (press Enter with empty input to finish):',
+      );
       while (true) {
-        const restriction = await this.prompter.text(`Restriction ${restrictions.length + 1}:`, '');
+        const restriction = await this.prompter.text(
+          `Restriction ${restrictions.length + 1}:`,
+          '',
+        );
         if (!restriction) break;
         restrictions.push(restriction);
       }
     }
 
     // Priority
-    const priority = await this.prompter.select('Priority level:', [
+    const priority = (await this.prompter.select('Priority level:', [
       { title: 'Low', value: Priority.LOW },
       { title: 'Medium', value: Priority.MEDIUM },
       { title: 'High', value: Priority.HIGH },
       { title: 'Critical', value: Priority.CRITICAL },
-    ]);
+    ])) as Priority;
 
     // Tags
-    const tagsInput = await this.prompter.text('Tags (comma-separated, optional):', '');
-    const tags = tagsInput && typeof tagsInput === 'string' 
-      ? tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0) 
-      : [];
+    const tagsInput = await this.prompter.text(
+      'Tags (comma-separated, optional):',
+      '',
+    );
+    const tags =
+      tagsInput && typeof tagsInput === 'string'
+        ? tagsInput
+            .split(',')
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0)
+        : [];
 
     // Create template
     const template: GenerationTemplate = {
@@ -230,7 +298,9 @@ export class InteractiveGenerator {
   /**
    * Interactively creates a new skill.
    */
-  async generateSkill(options: GenerationOptions = { interactive: true }): Promise<string> {
+  async generateSkill(
+    options: GenerationOptions = { interactive: true },
+  ): Promise<string> {
     console.log('🎯 Creating a new skill...\n');
 
     // Basic information
@@ -245,24 +315,32 @@ export class InteractiveGenerator {
     }
 
     // Level
-    const level = await this.prompter.select('Skill level:', [
+    const level = (await this.prompter.select('Skill level:', [
       { title: 'Beginner', value: SkillLevel.BEGINNER },
       { title: 'Intermediate', value: SkillLevel.INTERMEDIATE },
       { title: 'Advanced', value: SkillLevel.ADVANCED },
       { title: 'Expert', value: SkillLevel.EXPERT },
-    ]);
+    ])) as SkillLevel;
 
     // Category
     const category = await this.prompter.text('Category (optional):', '');
 
     // Prerequisites
     const prerequisites: string[] = [];
-    const addPrerequisites = await this.prompter.confirm('Add prerequisites?', false);
-    
+    const addPrerequisites = await this.prompter.confirm(
+      'Add prerequisites?',
+      false,
+    );
+
     if (addPrerequisites) {
-      console.log('\nEnter prerequisites (press Enter with empty input to finish):');
+      console.log(
+        '\nEnter prerequisites (press Enter with empty input to finish):',
+      );
       while (true) {
-        const prerequisite = await this.prompter.text(`Prerequisite ${prerequisites.length + 1}:`, '');
+        const prerequisite = await this.prompter.text(
+          `Prerequisite ${prerequisites.length + 1}:`,
+          '',
+        );
         if (!prerequisite) break;
         prerequisites.push(prerequisite);
       }
@@ -273,12 +351,18 @@ export class InteractiveGenerator {
 
     // Examples
     const examples: string[] = [];
-    const addExamples = await this.prompter.confirm('Add usage examples?', true);
-    
+    const addExamples = await this.prompter.confirm(
+      'Add usage examples?',
+      true,
+    );
+
     if (addExamples) {
       console.log('\nEnter examples (press Enter with empty input to finish):');
       while (true) {
-        const example = await this.prompter.text(`Example ${examples.length + 1}:`, '');
+        const example = await this.prompter.text(
+          `Example ${examples.length + 1}:`,
+          '',
+        );
         if (!example) break;
         examples.push(example);
       }
@@ -286,22 +370,37 @@ export class InteractiveGenerator {
 
     // Restrictions
     const restrictions: string[] = [];
-    const addRestrictions = await this.prompter.confirm('Add restrictions?', false);
-    
+    const addRestrictions = await this.prompter.confirm(
+      'Add restrictions?',
+      false,
+    );
+
     if (addRestrictions) {
-      console.log('\nEnter restrictions (press Enter with empty input to finish):');
+      console.log(
+        '\nEnter restrictions (press Enter with empty input to finish):',
+      );
       while (true) {
-        const restriction = await this.prompter.text(`Restriction ${restrictions.length + 1}:`, '');
+        const restriction = await this.prompter.text(
+          `Restriction ${restrictions.length + 1}:`,
+          '',
+        );
         if (!restriction) break;
         restrictions.push(restriction);
       }
     }
 
     // Tags
-    const tagsInput = await this.prompter.text('Tags (comma-separated, optional):', '');
-    const tags = tagsInput && typeof tagsInput === 'string' 
-      ? tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0) 
-      : [];
+    const tagsInput = await this.prompter.text(
+      'Tags (comma-separated, optional):',
+      '',
+    );
+    const tags =
+      tagsInput && typeof tagsInput === 'string'
+        ? tagsInput
+            .split(',')
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0)
+        : [];
 
     // Create template
     const template: GenerationTemplate = {
@@ -325,41 +424,47 @@ export class InteractiveGenerator {
   /**
    * Searches and allows selection of existing roles.
    */
-  private async selectRoles(message: string = 'Select roles:'): Promise<string[]> {
+  private async selectRoles(
+    message: string = 'Select roles:',
+  ): Promise<string[]> {
     const existingRoles = await this.agentManager.list('role');
-    
+
     if (existingRoles.length === 0) {
       console.log('No existing roles found. You can create roles separately.');
       return [];
     }
 
-    const choices = existingRoles.map(role => ({
+    const choices = existingRoles.map((role) => ({
       title: `${role.name} - ${role.description}`,
       value: role.name,
       selected: false,
     }));
 
-    return await this.prompter.multiselect(message, choices);
+    return (await this.prompter.multiselect(message, choices)) as string[];
   }
 
   /**
    * Searches and allows selection of existing skills.
    */
-  private async selectSkills(message: string = 'Select skills:'): Promise<string[]> {
+  private async selectSkills(
+    message: string = 'Select skills:',
+  ): Promise<string[]> {
     const existingSkills = await this.agentManager.list('skill');
-    
+
     if (existingSkills.length === 0) {
-      console.log('No existing skills found. You can create skills separately.');
+      console.log(
+        'No existing skills found. You can create skills separately.',
+      );
       return [];
     }
 
-    const choices = existingSkills.map(skill => ({
+    const choices = existingSkills.map((skill) => ({
       title: `${skill.name} - ${skill.description}`,
       value: skill.name,
       selected: false,
     }));
 
-    return await this.prompter.multiselect(message, choices);
+    return (await this.prompter.multiselect(message, choices)) as string[];
   }
 
   /**
@@ -379,13 +484,16 @@ export class InteractiveGenerator {
       'mcp-client',
     ];
 
-    const choices = availableTools.map(tool => ({
+    const choices = availableTools.map((tool) => ({
       title: tool,
       value: tool,
       selected: false,
     }));
 
-    return await this.prompter.multiselect('Select available tools:', choices);
+    return (await this.prompter.multiselect(
+      'Select available tools:',
+      choices,
+    )) as string[];
   }
 }
 
@@ -393,8 +501,9 @@ export class InteractiveGenerator {
  * Template definitions for common agent types.
  */
 export const AGENT_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
-  'developer': {
-    description: 'A software developer agent capable of writing, reviewing, and debugging code',
+  developer: {
+    description:
+      'A software developer agent capable of writing, reviewing, and debugging code',
     tags: ['coding', 'development', 'technical'],
     additionalFields: {
       skills: ['programming', 'debugging', 'code-review'],
@@ -402,8 +511,9 @@ export const AGENT_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
       personality: 'Analytical, detail-oriented, and focused on best practices',
     },
   },
-  'analyst': {
-    description: 'A data analyst agent for processing and analyzing information',
+  analyst: {
+    description:
+      'A data analyst agent for processing and analyzing information',
     tags: ['analysis', 'data', 'research'],
     additionalFields: {
       skills: ['data-analysis', 'research', 'reporting'],
@@ -411,8 +521,9 @@ export const AGENT_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
       personality: 'Methodical, thorough, and objective in analysis',
     },
   },
-  'writer': {
-    description: 'A content writer agent for creating documentation and articles',
+  writer: {
+    description:
+      'A content writer agent for creating documentation and articles',
     tags: ['writing', 'content', 'documentation'],
     additionalFields: {
       skills: ['writing', 'editing', 'documentation'],
@@ -420,7 +531,7 @@ export const AGENT_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
       personality: 'Creative, articulate, and focused on clarity',
     },
   },
-  'researcher': {
+  researcher: {
     description: 'A research agent for gathering and synthesizing information',
     tags: ['research', 'information', 'synthesis'],
     additionalFields: {
@@ -436,7 +547,8 @@ export const AGENT_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
  */
 export const ROLE_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
   'project-manager': {
-    description: 'Manages projects, coordinates tasks, and ensures deliverables',
+    description:
+      'Manages projects, coordinates tasks, and ensures deliverables',
     additionalFields: {
       responsibilities: [
         'Plan and coordinate project activities',
@@ -478,8 +590,9 @@ export const ROLE_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
  * Template definitions for common skills.
  */
 export const SKILL_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
-  'programming': {
-    description: 'Ability to write, debug, and maintain code in various languages',
+  programming: {
+    description:
+      'Ability to write, debug, and maintain code in various languages',
     additionalFields: {
       level: SkillLevel.INTERMEDIATE,
       category: 'Development',
@@ -492,7 +605,8 @@ export const SKILL_TEMPLATES: Record<string, Partial<GenerationTemplate>> = {
     },
   },
   'data-analysis': {
-    description: 'Analyze data patterns, trends, and insights from various sources',
+    description:
+      'Analyze data patterns, trends, and insights from various sources',
     additionalFields: {
       level: SkillLevel.INTERMEDIATE,
       category: 'Analytics',

@@ -8,8 +8,8 @@ The `ProviderAdapter` interface requires the following implementation:
 
 ```typescript
 export interface ProviderAdapter {
-  readonly id: string;                    // Unique provider identifier
-  setApiKey(apiKey: string): void;       // Set/update the API key
+  readonly id: string; // Unique provider identifier
+  setApiKey(apiKey: string): void; // Set/update the API key
   generateContent(prompt: string): Promise<string>; // Generate AI content
 }
 ```
@@ -26,6 +26,7 @@ Provider adapters now support automatic API key rotation and fallback. The syste
 ### Error Handling
 
 When implementing `generateContent()`, throw meaningful errors that can be categorized:
+
 - Rate limit errors: Include "rate limit", "quota", or "429" in the message
 - Invalid key errors: Include "invalid" and "key" in the message
 - Network errors: Include "network" or "timeout" in the message

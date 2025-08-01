@@ -82,6 +82,11 @@ export interface CliArgs {
   output: string | undefined; // For generate command
   dryRun: boolean | undefined; // For generate command
   overwrite: boolean | undefined; // For generate command
+  // Edit command options
+  editor: string | undefined; // For edit command
+  field: string | undefined; // For edit command
+  value: string | undefined; // For edit command
+  validate: boolean | undefined; // For edit command
   _: Array<string | number>;
 }
 
@@ -243,54 +248,99 @@ export async function parseArguments(): Promise<CliArgs> {
       }
       return true;
     })
-    .command('generate <type>', 'Generate agents, roles, and skills', (yargs) => {
-      yargs
-        .positional('type', {
-          describe: 'The type of item to generate',
-          type: 'string',
-          choices: ['agent', 'role', 'skill'],
-        })
-        .option('name', {
-          type: 'string',
-          description: 'Name for the new item',
-          alias: 'n',
-        })
-        .option('template', {
-          type: 'string', 
-          description: 'Use a predefined template',
-          alias: 't',
-        })
-        .option('interactive', {
-          type: 'boolean',
-          description: 'Use interactive prompts',
-          default: true,
-        })
-        .option('list', {
-          type: 'boolean',
-          description: 'List existing items',
-          alias: 'l',
-        })
-        .option('search', {
-          type: 'string',
-          description: 'Search existing items',
-          alias: 's',
-        })
-        .option('output', {
-          type: 'string',
-          description: 'Output directory',
-          alias: 'o',
-        })
-        .option('dry-run', {
-          type: 'boolean',
-          description: 'Show what would be created without creating files',
-          default: false,
-        })
-        .option('overwrite', {
-          type: 'boolean',
-          description: 'Overwrite existing files',
-          default: false,
-        });
-    })
+    .command(
+      'edit <type> <n>',
+      'Edit agent, role, or skill metadata',
+      (yargs) => {
+        yargs
+          .positional('type', {
+            describe: 'The type of item to edit',
+            type: 'string',
+            choices: ['agent', 'role', 'skill'],
+          })
+          .positional('name', {
+            describe: 'Name of the item to edit',
+            type: 'string',
+          })
+          .option('editor', {
+            type: 'string',
+            description: 'Text editor to use (default: $EDITOR)',
+            alias: 'e',
+          })
+          .option('interactive', {
+            type: 'boolean',
+            description: 'Use interactive prompts for editing',
+            alias: 'i',
+          })
+          .option('field', {
+            type: 'string',
+            description: 'Specific field to edit',
+            alias: 'f',
+          })
+          .option('value', {
+            type: 'string',
+            description: 'Value to set (requires --field)',
+            alias: 'v',
+          })
+          .option('validate', {
+            type: 'boolean',
+            description: 'Validate metadata after editing',
+            default: true,
+          });
+      }
+    )
+    .command(
+      'generate <type>',
+      'Generate agents, roles, and skills',
+      (yargs) => {
+        yargs
+          .positional('type', {
+            describe: 'The type of item to generate',
+            type: 'string',
+            choices: ['agent', 'role', 'skill'],
+          })
+          .option('name', {
+            type: 'string',
+            description: 'Name for the new item',
+            alias: 'n',
+          })
+          .option('template', {
+            type: 'string',
+            description: 'Use a predefined template',
+            alias: 't',
+          })
+          .option('interactive', {
+            type: 'boolean',
+            description: 'Use interactive prompts',
+            default: true,
+          })
+          .option('list', {
+            type: 'boolean',
+            description: 'List existing items',
+            alias: 'l',
+          })
+          .option('search', {
+            type: 'string',
+            description: 'Search existing items',
+            alias: 's',
+          })
+          .option('output', {
+            type: 'string',
+            description: 'Output directory',
+            alias: 'o',
+          })
+          .option('dry-run', {
+            type: 'boolean',
+            description: 'Show what would be created without creating files',
+            default: false,
+          })
+          .option('overwrite', {
+            type: 'boolean',
+            description: 'Overwrite existing files',
+            default: false,
+          });
+      },
+    )
     .command('provider <action>', 'Manage provider configurations', (yargs) => {
       yargs
         .positional('action', {
@@ -306,46 +356,61 @@ export async function parseArguments(): Promise<CliArgs> {
           type: 'string',
           description: 'The API key for the provider',
         })
-        .command('keys <subcommand>', 'Manage API keys for providers', (yargs) => {
-          yargs
-            .positional('subcommand', {
-              describe: 'Key management action',
-              type: 'string',
-              choices: ['list', 'add', 'set', 'status', 'stats'],
-            })
-            .option('provider', {
-              type: 'string',
-              description: 'Provider ID for key operations',
-              alias: 'p',
-            })
-            .option('key', {
-              type: 'string',
-              description: 'API key to add or set',
-              alias: 'k',
-            })
-            .option('status', {
-              type: 'boolean',
-              description: 'Show detailed status information',
-              default: false,
-            });
-        })
-        .command('stats <subcommand>', 'View usage statistics and analytics', (yargs) => {
-          yargs
-            .positional('subcommand', {
-              describe: 'Statistics action',
-              type: 'string',
-              choices: ['summary', 'providers', 'commands', 'sessions', 'export', 'clear'],
-            })
-            .option('export', {
-              type: 'string',
-              description: 'Export statistics to file path',
-            })
-            .option('clear', {
-              type: 'boolean',
-              description: 'Clear all usage statistics',
-              default: false,
-            });
-        });
+        .command(
+          'keys <subcommand>',
+          'Manage API keys for providers',
+          (yargs) => {
+            yargs
+              .positional('subcommand', {
+                describe: 'Key management action',
+                type: 'string',
+                choices: ['list', 'add', 'set', 'status', 'stats'],
+              })
+              .option('provider', {
+                type: 'string',
+                description: 'Provider ID for key operations',
+                alias: 'p',
+              })
+              .option('key', {
+                type: 'string',
+                description: 'API key to add or set',
+                alias: 'k',
+              })
+              .option('status', {
+                type: 'boolean',
+                description: 'Show detailed status information',
+                default: false,
+              });
+          },
+        )
+        .command(
+          'stats <subcommand>',
+          'View usage statistics and analytics',
+          (yargs) => {
+            yargs
+              .positional('subcommand', {
+                describe: 'Statistics action',
+                type: 'string',
+                choices: [
+                  'summary',
+                  'providers',
+                  'commands',
+                  'sessions',
+                  'export',
+                  'clear',
+                ],
+              })
+              .option('export', {
+                type: 'string',
+                description: 'Export statistics to file path',
+              })
+              .option('clear', {
+                type: 'boolean',
+                description: 'Clear all usage statistics',
+                default: false,
+              });
+          },
+        );
     });
 
   yargsInstance.wrap(yargsInstance.terminalWidth());

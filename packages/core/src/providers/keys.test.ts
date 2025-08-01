@@ -6,7 +6,7 @@
 
 // packages/core/src/providers/keys.test.ts
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   ProviderKeyManager,
   GlobalKeyManager,
@@ -31,10 +31,20 @@ describe('ProviderKeyManager', () => {
 
     it('should initialize with ApiKeyMetadata objects', () => {
       const metadataKeys: ApiKeyMetadata[] = [
-        { key: 'meta-key-1', status: KeyStatus.ACTIVE, failureCount: 0, dailyUsageCount: 0 },
-        { key: 'meta-key-2', status: KeyStatus.RATE_LIMITED, failureCount: 1, dailyUsageCount: 0 },
+        {
+          key: 'meta-key-1',
+          status: KeyStatus.ACTIVE,
+          failureCount: 0,
+          dailyUsageCount: 0,
+        },
+        {
+          key: 'meta-key-2',
+          status: KeyStatus.RATE_LIMITED,
+          failureCount: 1,
+          dailyUsageCount: 0,
+        },
       ];
-      
+
       const manager = new ProviderKeyManager('test', metadataKeys);
       expect(manager.getCurrentKey()).toBe('meta-key-1');
       expect(manager.getAllKeys()).toHaveLength(2);
@@ -48,10 +58,20 @@ describe('ProviderKeyManager', () => {
 
     it('should find first active key when some are disabled', () => {
       const keys: ApiKeyMetadata[] = [
-        { key: 'disabled-key', status: KeyStatus.FAILED, failureCount: 5, dailyUsageCount: 0 },
-        { key: 'active-key', status: KeyStatus.ACTIVE, failureCount: 0, dailyUsageCount: 0 },
+        {
+          key: 'disabled-key',
+          status: KeyStatus.FAILED,
+          failureCount: 5,
+          dailyUsageCount: 0,
+        },
+        {
+          key: 'active-key',
+          status: KeyStatus.ACTIVE,
+          failureCount: 0,
+          dailyUsageCount: 0,
+        },
       ];
-      
+
       const manager = new ProviderKeyManager('test', keys);
       expect(manager.getCurrentKey()).toBe('active-key');
     });
@@ -68,14 +88,18 @@ describe('ProviderKeyManager', () => {
       const success = keyManager.removeKey('key2');
       expect(success).toBe(true);
       expect(keyManager.getAllKeys()).toHaveLength(2);
-      expect(keyManager.getAllKeys().find(k => k.key === 'key2')).toBeUndefined();
+      expect(
+        keyManager.getAllKeys().find((k) => k.key === 'key2'),
+      ).toBeUndefined();
     });
 
     it('should remove keys by index', () => {
       const success = keyManager.removeKey(1);
       expect(success).toBe(true);
       expect(keyManager.getAllKeys()).toHaveLength(2);
-      expect(keyManager.getAllKeys().find(k => k.key === 'key2')).toBeUndefined();
+      expect(
+        keyManager.getAllKeys().find((k) => k.key === 'key2'),
+      ).toBeUndefined();
     });
 
     it('should return false for invalid key removal', () => {
@@ -89,12 +113,12 @@ describe('ProviderKeyManager', () => {
       const rotated = await keyManager.handleKeyFailure(
         KeyFailureReason.RATE_LIMIT,
         'Rate limit exceeded',
-        3600
+        3600,
       );
 
       expect(rotated).toBe(true);
       expect(keyManager.getCurrentKey()).toBe('key2'); // Should rotate to next key
-      
+
       const failedKey = keyManager.getAllKeys()[0];
       expect(failedKey.status).toBe(KeyStatus.RATE_LIMITED);
       expect(failedKey.failureCount).toBe(1);
@@ -105,17 +129,23 @@ describe('ProviderKeyManager', () => {
       const manager = new ProviderKeyManager('test', ['key1', 'key2'], config);
 
       // First failure - should not disable yet, should not rotate
-      const rotated1 = await manager.handleKeyFailure(KeyFailureReason.INVALID_KEY);
+      const rotated1 = await manager.handleKeyFailure(
+        KeyFailureReason.INVALID_KEY,
+      );
       expect(rotated1).toBe(false); // Should not rotate yet
       expect(manager.getCurrentKey()).toBe('key1'); // Still on key1
-      const firstKeyAfterFirstFailure = manager.getAllKeys().find(k => k.key === 'key1');
+      const firstKeyAfterFirstFailure = manager
+        .getAllKeys()
+        .find((k) => k.key === 'key1');
       expect(firstKeyAfterFirstFailure?.status).toBe(KeyStatus.ACTIVE);
       expect(firstKeyAfterFirstFailure?.failureCount).toBe(1);
 
       // Second failure - should disable the key and rotate
-      const rotated2 = await manager.handleKeyFailure(KeyFailureReason.INVALID_KEY);
+      const rotated2 = await manager.handleKeyFailure(
+        KeyFailureReason.INVALID_KEY,
+      );
       expect(rotated2).toBe(true); // Should rotate now
-      const firstKey = manager.getAllKeys().find(k => k.key === 'key1');
+      const firstKey = manager.getAllKeys().find((k) => k.key === 'key1');
       expect(firstKey?.failureCount).toBe(2);
       expect(firstKey?.status).toBe(KeyStatus.FAILED);
       expect(manager.getCurrentKey()).toBe('key2');
@@ -123,9 +153,9 @@ describe('ProviderKeyManager', () => {
 
     it('should return false when no keys available for rotation', async () => {
       const singleKeyManager = new ProviderKeyManager('test', ['only-key']);
-      
+
       const rotated = await singleKeyManager.handleKeyFailure(
-        KeyFailureReason.INVALID_KEY
+        KeyFailureReason.INVALID_KEY,
       );
 
       expect(rotated).toBe(false);
@@ -134,7 +164,7 @@ describe('ProviderKeyManager', () => {
     it('should record failure events', async () => {
       await keyManager.handleKeyFailure(
         KeyFailureReason.NETWORK_ERROR,
-        'Connection timeout'
+        'Connection timeout',
       );
 
       const stats = keyManager.getFailureStats();
@@ -146,7 +176,7 @@ describe('ProviderKeyManager', () => {
   describe('success recording', () => {
     it('should record successful usage', () => {
       keyManager.recordSuccess();
-      
+
       const currentKey = keyManager.getCurrentKeyMetadata();
       expect(currentKey?.lastUsedTime).toBeDefined();
       expect(currentKey?.dailyUsageCount).toBe(1);
@@ -163,7 +193,7 @@ describe('ProviderKeyManager', () => {
     it('should skip disabled keys during rotation', () => {
       // Disable second key
       keyManager.getAllKeys()[1].status = KeyStatus.FAILED;
-      
+
       const rotated = keyManager.rotateToNextKey();
       expect(rotated).toBe(true);
       expect(keyManager.getCurrentKey()).toBe('key3'); // Should skip key2
@@ -184,7 +214,7 @@ describe('ProviderKeyManager', () => {
     it('should reset failed keys after failure reset period', () => {
       const config = { failureResetTimeHours: 0.001 }; // Very short for testing
       const manager = new ProviderKeyManager('test', testKeys, config);
-      
+
       const keys = manager.getAllKeys();
       keys[0].status = KeyStatus.FAILED;
       keys[0].lastFailureTime = Date.now() - 10000; // 10 seconds ago
@@ -223,7 +253,7 @@ describe('GlobalKeyManager', () => {
   describe('provider registration', () => {
     it('should register providers with keys', () => {
       globalManager.registerProvider('test-provider', ['key1', 'key2']);
-      
+
       const key = globalManager.getCurrentKey('test-provider');
       expect(key).toBe('key1');
     });
@@ -246,7 +276,7 @@ describe('GlobalKeyManager', () => {
       const rotated = await globalManager.handleProviderFailure(
         'test-provider',
         KeyFailureReason.RATE_LIMIT,
-        'Rate limit exceeded'
+        'Rate limit exceeded',
       );
 
       expect(rotated).toBe(true);
@@ -256,7 +286,7 @@ describe('GlobalKeyManager', () => {
     it('should return false for non-existent providers', async () => {
       const rotated = await globalManager.handleProviderFailure(
         'non-existent',
-        KeyFailureReason.INVALID_KEY
+        KeyFailureReason.INVALID_KEY,
       );
 
       expect(rotated).toBe(false);
@@ -266,7 +296,7 @@ describe('GlobalKeyManager', () => {
   describe('success recording', () => {
     it('should record success for providers', () => {
       globalManager.registerProvider('test-provider', ['key1']);
-      
+
       // Should not throw
       globalManager.recordSuccess('test-provider');
       globalManager.recordSuccess('non-existent'); // Should be safe
@@ -278,7 +308,10 @@ describe('GlobalKeyManager', () => {
       globalManager.registerProvider('provider1', ['key1a', 'key1b']);
       globalManager.registerProvider('provider2', ['key2a']);
 
-      await globalManager.handleProviderFailure('provider1', KeyFailureReason.RATE_LIMIT);
+      await globalManager.handleProviderFailure(
+        'provider1',
+        KeyFailureReason.RATE_LIMIT,
+      );
 
       const stats = globalManager.getGlobalStats();
       expect(stats['provider1']).toBeDefined();

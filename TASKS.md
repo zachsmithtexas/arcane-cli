@@ -34,7 +34,7 @@
        _Criteria:_ CLI command scaffolds markdown files, supports fuzzy search, writes to `.arcane/` structure.  
        _File:_ `cli/generate.js`
 
-- [ ] **Agent Metadata as Markdown (`agents/[name]/meta.md`):**  
+- [x] **Agent Metadata as Markdown (`agents/[name]/meta.md`):**  
        Store/edit agent, role, and skill metadata in markdown (frontmatter).  
        _Criteria:_ Agents reference meta.md, editable via CLI or text editor.  
        _File:_ `.arcane/agents/`

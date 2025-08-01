@@ -14,11 +14,12 @@
  */
 
 import { z } from 'zod';
-import { 
-  ApiKeyMetadataSchema, 
-  KeyRotationConfigSchema, 
-  GlobalKeyManager, 
-  KeyFailureReason 
+import {
+  ApiKeyMetadata,
+  ApiKeyMetadataSchema,
+  KeyRotationConfigSchema,
+  GlobalKeyManager,
+  KeyFailureReason,
 } from './keys.js';
 import { getUsageStatsManager } from '../telemetry/usageStats.js';
 
@@ -122,7 +123,7 @@ export class ProviderManager {
       if (providerConfig.enabled) {
         try {
           // Determine which keys to use (support both legacy single key and new multi-key)
-          let keys: (string | any)[] = [];
+          let keys: Array<string | ApiKeyMetadata> = [];
           if (providerConfig.apiKeys && providerConfig.apiKeys.length > 0) {
             keys = providerConfig.apiKeys;
           } else if (providerConfig.apiKey) {
@@ -130,7 +131,9 @@ export class ProviderManager {
           }
 
           if (keys.length === 0) {
-            console.warn(`No API keys configured for provider '${providerConfig.id}'. Skipping.`);
+            console.warn(
+              `No API keys configured for provider '${providerConfig.id}'. Skipping.`,
+            );
             continue;
           }
 
@@ -138,22 +141,27 @@ export class ProviderManager {
           this.keyManager.registerProvider(
             providerConfig.id,
             keys,
-            providerConfig.keyRotationConfig
+            providerConfig.keyRotationConfig,
           );
 
           // Load the provider adapter
           const adapter = await loadProviderAdapter(providerConfig.id);
-          
+
           // Set initial API key
           const initialKey = this.keyManager.getCurrentKey(providerConfig.id);
           if (initialKey) {
             adapter.setApiKey(initialKey);
             this.providers.set(providerConfig.id, adapter);
           } else {
-            console.warn(`No active keys available for provider '${providerConfig.id}'.`);
+            console.warn(
+              `No active keys available for provider '${providerConfig.id}'.`,
+            );
           }
         } catch (error) {
-          console.warn(`Could not initialize provider '${providerConfig.id}':`, error);
+          console.warn(
+            `Could not initialize provider '${providerConfig.id}':`,
+            error,
+          );
         }
       }
     }
@@ -201,7 +209,7 @@ export class ProviderManager {
   async generateContentWithFallback(prompt: string): Promise<string> {
     const maxRetries = 3;
     const usageStats = getUsageStatsManager();
-    
+
     for (const providerId of this.fallbackOrder) {
       const provider = this.getProvider(providerId);
       if (!provider) {
@@ -211,12 +219,14 @@ export class ProviderManager {
       // Try current provider with key rotation support
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         const startTime = Date.now();
-        
+
         try {
           // Get current key for this provider
           const currentKey = this.keyManager.getCurrentKey(providerId);
           if (!currentKey) {
-            console.warn(`No active keys for provider '${providerId}', skipping.`);
+            console.warn(
+              `No active keys for provider '${providerId}', skipping.`,
+            );
             break; // Move to next provider
           }
 
@@ -226,28 +236,36 @@ export class ProviderManager {
           // Attempt to generate content
           const result = await provider.generateContent(prompt);
           const responseTime = Date.now() - startTime;
-          
+
           // Record success
           this.keyManager.recordSuccess(providerId);
           await usageStats.recordProviderUsage(providerId, true, responseTime);
-          
+
           return result;
-          
         } catch (error) {
           const responseTime = Date.now() - startTime;
-          console.warn(`Provider '${providerId}' failed (attempt ${attempt + 1}):`, error);
-          
+          console.warn(
+            `Provider '${providerId}' failed (attempt ${attempt + 1}):`,
+            error,
+          );
+
           // Determine failure reason and handle key rotation
           const failureReason = this.categorizeError(error);
           const rotated = await this.keyManager.handleProviderFailure(
             providerId,
             failureReason,
-            error instanceof Error ? error.message : String(error)
+            error instanceof Error ? error.message : String(error),
           );
 
           // Record provider failure in usage stats
-          await usageStats.recordProviderUsage(providerId, false, responseTime, 0, failureReason);
-          
+          await usageStats.recordProviderUsage(
+            providerId,
+            false,
+            responseTime,
+            0,
+            failureReason,
+          );
+
           // Record key rotation if it occurred
           if (rotated) {
             await usageStats.recordKeyRotation(providerId);
@@ -257,15 +275,17 @@ export class ProviderManager {
           if (!rotated) {
             break;
           }
-          
+
           // If it's a rate limit, wait a bit before retrying
           if (failureReason === KeyFailureReason.RATE_LIMIT) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            await new Promise((resolve) =>
+              setTimeout(resolve, 1000 * (attempt + 1)),
+            );
           }
         }
       }
     }
-    
+
     throw new Error('All providers and keys failed to generate content.');
   }
 
@@ -273,18 +293,31 @@ export class ProviderManager {
    * Categorizes an error to determine the appropriate key rotation response.
    */
   private categorizeError(error: unknown): KeyFailureReason {
-    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    
-    if (errorMessage.includes('rate limit') || errorMessage.includes('quota') || errorMessage.includes('429')) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message.toLowerCase()
+        : String(error).toLowerCase();
+
+    if (
+      errorMessage.includes('rate limit') ||
+      errorMessage.includes('quota') ||
+      errorMessage.includes('429')
+    ) {
       return KeyFailureReason.RATE_LIMIT;
-    } else if (errorMessage.includes('invalid') && errorMessage.includes('key')) {
+    } else if (
+      errorMessage.includes('invalid') &&
+      errorMessage.includes('key')
+    ) {
       return KeyFailureReason.INVALID_KEY;
     } else if (errorMessage.includes('quota exceeded')) {
       return KeyFailureReason.QUOTA_EXCEEDED;
-    } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+    } else if (
+      errorMessage.includes('network') ||
+      errorMessage.includes('timeout')
+    ) {
       return KeyFailureReason.NETWORK_ERROR;
     }
-    
+
     return KeyFailureReason.UNKNOWN;
   }
 
@@ -311,7 +344,10 @@ export class ProviderManager {
   /**
    * Gets key statistics for all providers.
    */
-  getKeyStats(): Record<string, ReturnType<GlobalKeyManager['getGlobalStats']>[string]> {
+  getKeyStats(): Record<
+    string,
+    ReturnType<GlobalKeyManager['getGlobalStats']>[string]
+  > {
     return this.keyManager.getGlobalStats();
   }
 

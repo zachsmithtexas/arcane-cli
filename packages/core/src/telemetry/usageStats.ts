@@ -8,7 +8,7 @@
 
 /**
  * @fileoverview Usage statistics and provider failure tracking system.
- * 
+ *
  * This module provides anonymized tracking of command frequency and provider
  * success/failures with local storage and opt-out capabilities.
  */
@@ -116,7 +116,8 @@ export class UsageStatsManager {
 
   constructor(config: Partial<UsageStatsConfig> = {}) {
     this.config = { ...DEFAULT_STATS_CONFIG, ...config };
-    this.statsFilePath = config.statsFilePath || resolve(homedir(), '.arcane', 'usage-stats.json');
+    this.statsFilePath =
+      config.statsFilePath || resolve(homedir(), '.arcane', 'usage-stats.json');
     this.stats = this.createDefaultStats();
   }
 
@@ -151,7 +152,9 @@ export class UsageStatsManager {
     this.sessionStartTime = Date.now();
 
     const sessionStats: SessionStats = {
-      sessionId: this.config.anonymizationEnabled ? this.anonymizeSessionId(sessionId) : sessionId,
+      sessionId: this.config.anonymizationEnabled
+        ? this.anonymizeSessionId(sessionId)
+        : sessionId,
       startTime: this.sessionStartTime,
       commandsExecuted: 0,
       totalTokensUsed: 0,
@@ -185,13 +188,19 @@ export class UsageStatsManager {
   /**
    * Records command usage.
    */
-  async recordCommand(command: string, executionTime?: number, success: boolean = true): Promise<void> {
+  async recordCommand(
+    command: string,
+    executionTime?: number,
+    success: boolean = true,
+  ): Promise<void> {
     if (!this.config.enabled) {
       return;
     }
 
-    const commandKey = this.config.anonymizationEnabled ? this.anonymizeCommand(command) : command;
-    
+    const commandKey = this.config.anonymizationEnabled
+      ? this.anonymizeCommand(command)
+      : command;
+
     if (!this.stats.commands[commandKey]) {
       this.stats.commands[commandKey] = {
         command: commandKey,
@@ -214,8 +223,10 @@ export class UsageStatsManager {
 
     if (executionTime !== undefined) {
       // Update running average
-      const totalTime = commandStats.averageExecutionTime * (commandStats.usageCount - 1);
-      commandStats.averageExecutionTime = (totalTime + executionTime) / commandStats.usageCount;
+      const totalTime =
+        commandStats.averageExecutionTime * (commandStats.usageCount - 1);
+      commandStats.averageExecutionTime =
+        (totalTime + executionTime) / commandStats.usageCount;
     }
 
     // Update session stats
@@ -233,18 +244,20 @@ export class UsageStatsManager {
    * Records provider usage and outcome.
    */
   async recordProviderUsage(
-    providerId: string, 
-    success: boolean, 
+    providerId: string,
+    success: boolean,
     responseTime?: number,
     tokensUsed?: number,
-    failureReason?: KeyFailureReason
+    failureReason?: KeyFailureReason,
   ): Promise<void> {
     if (!this.config.enabled) {
       return;
     }
 
-    const providerKey = this.config.anonymizationEnabled ? this.anonymizeProviderId(providerId) : providerId;
-    
+    const providerKey = this.config.anonymizationEnabled
+      ? this.anonymizeProviderId(providerId)
+      : providerId;
+
     if (!this.stats.providers[providerKey]) {
       this.stats.providers[providerKey] = {
         providerId: providerKey,
@@ -266,11 +279,12 @@ export class UsageStatsManager {
       providerStats.successfulRequests++;
     } else {
       providerStats.failedRequests++;
-      
+
       if (failureReason) {
         const reasonKey = failureReason.toString();
-        providerStats.failuresByReason[reasonKey] = (providerStats.failuresByReason[reasonKey] || 0) + 1;
-        
+        providerStats.failuresByReason[reasonKey] =
+          (providerStats.failuresByReason[reasonKey] || 0) + 1;
+
         if (failureReason === KeyFailureReason.RATE_LIMIT) {
           providerStats.rateLimitHits++;
         }
@@ -279,8 +293,10 @@ export class UsageStatsManager {
 
     if (responseTime !== undefined) {
       // Update running average
-      const totalTime = providerStats.averageResponseTime * (providerStats.totalRequests - 1);
-      providerStats.averageResponseTime = (totalTime + responseTime) / providerStats.totalRequests;
+      const totalTime =
+        providerStats.averageResponseTime * (providerStats.totalRequests - 1);
+      providerStats.averageResponseTime =
+        (totalTime + responseTime) / providerStats.totalRequests;
     }
 
     // Update session stats
@@ -289,7 +305,7 @@ export class UsageStatsManager {
       if (tokensUsed) {
         currentSession.totalTokensUsed += tokensUsed;
       }
-      
+
       if (!currentSession.providersUsed.includes(providerKey)) {
         currentSession.providersUsed.push(providerKey);
       }
@@ -307,8 +323,10 @@ export class UsageStatsManager {
       return;
     }
 
-    const providerKey = this.config.anonymizationEnabled ? this.anonymizeProviderId(providerId) : providerId;
-    
+    const providerKey = this.config.anonymizationEnabled
+      ? this.anonymizeProviderId(providerId)
+      : providerId;
+
     if (!this.stats.providers[providerKey]) {
       await this.recordProviderUsage(providerId, false); // Initialize if needed
     }
@@ -321,7 +339,11 @@ export class UsageStatsManager {
   /**
    * Records tool call execution.
    */
-  async recordToolCall(toolName: string, success: boolean, executionTime?: number): Promise<void> {
+  async recordToolCall(
+    toolName: string,
+    success: boolean,
+    executionTime?: number,
+  ): Promise<void> {
     if (!this.config.enabled) {
       return;
     }
@@ -372,30 +394,43 @@ export class UsageStatsManager {
     totalSessions: number;
     totalCommands: number;
     topCommands: Array<{ command: string; count: number }>;
-    providerReliability: Array<{ provider: string; successRate: number; totalRequests: number }>;
+    providerReliability: Array<{
+      provider: string;
+      successRate: number;
+      totalRequests: number;
+    }>;
     averageSessionLength: number;
     totalFailures: number;
   } {
     const topCommands = Object.values(this.stats.commands)
       .sort((a, b) => b.usageCount - a.usageCount)
       .slice(0, 10)
-      .map(cmd => ({ command: cmd.command, count: cmd.usageCount }));
+      .map((cmd) => ({ command: cmd.command, count: cmd.usageCount }));
 
     const providerReliability = Object.values(this.stats.providers)
-      .map(provider => ({
+      .map((provider) => ({
         provider: provider.providerId,
-        successRate: provider.totalRequests > 0 ? provider.successfulRequests / provider.totalRequests : 0,
+        successRate:
+          provider.totalRequests > 0
+            ? provider.successfulRequests / provider.totalRequests
+            : 0,
         totalRequests: provider.totalRequests,
       }))
       .sort((a, b) => b.totalRequests - a.totalRequests);
 
-    const completedSessions = this.stats.sessions.filter(s => s.endTime);
-    const averageSessionLength = completedSessions.length > 0
-      ? completedSessions.reduce((sum, s) => sum + (s.endTime! - s.startTime), 0) / completedSessions.length
-      : 0;
+    const completedSessions = this.stats.sessions.filter((s) => s.endTime);
+    const averageSessionLength =
+      completedSessions.length > 0
+        ? completedSessions.reduce(
+            (sum, s) => sum + (s.endTime! - s.startTime),
+            0,
+          ) / completedSessions.length
+        : 0;
 
-    const totalFailures = Object.values(this.stats.providers)
-      .reduce((sum, provider) => sum + provider.failedRequests, 0);
+    const totalFailures = Object.values(this.stats.providers).reduce(
+      (sum, provider) => sum + provider.failedRequests,
+      0,
+    );
 
     return {
       totalSessions: this.stats.totalSessions,
@@ -454,7 +489,7 @@ export class UsageStatsManager {
     const dir = resolve(this.statsFilePath, '..');
     try {
       await fs.mkdir(dir, { recursive: true });
-    } catch (error) {
+    } catch (_error) {
       // Directory might already exist
     }
   }
@@ -465,7 +500,7 @@ export class UsageStatsManager {
       const parsed = JSON.parse(data);
       this.stats = UsageStatsSchema.parse(parsed);
     } catch (error) {
-      if ((error as any).code !== 'ENOENT') {
+      if ((error as { code: string }).code !== 'ENOENT') {
         console.warn('Failed to load usage stats:', error);
       }
       // File doesn't exist or is invalid, use defaults
@@ -475,21 +510,30 @@ export class UsageStatsManager {
   private async saveStats(): Promise<void> {
     try {
       this.stats.lastUpdated = Date.now();
-      await fs.writeFile(this.statsFilePath, JSON.stringify(this.stats, null, 2), 'utf-8');
-    } catch (error) {
-      console.warn('Failed to save usage stats:', error);
+      await fs.writeFile(
+        this.statsFilePath,
+        JSON.stringify(this.stats, null, 2),
+        'utf-8',
+      );
+    } catch (_error) {
+      console.warn('Failed to save usage stats:', _error);
     }
   }
 
   private async cleanupOldData(): Promise<void> {
-    const cutoffTime = Date.now() - (this.config.dataRetentionDays * 24 * 60 * 60 * 1000);
-    
+    const cutoffTime =
+      Date.now() - this.config.dataRetentionDays * 24 * 60 * 60 * 1000;
+
     // Remove old sessions
-    this.stats.sessions = this.stats.sessions.filter(session => session.startTime > cutoffTime);
-    
+    this.stats.sessions = this.stats.sessions.filter(
+      (session) => session.startTime > cutoffTime,
+    );
+
     // Limit session history
     if (this.stats.sessions.length > this.config.maxSessionHistory) {
-      this.stats.sessions = this.stats.sessions.slice(-this.config.maxSessionHistory);
+      this.stats.sessions = this.stats.sessions.slice(
+        -this.config.maxSessionHistory,
+      );
     }
   }
 
@@ -497,12 +541,12 @@ export class UsageStatsManager {
     if (!this.currentSessionId) {
       return undefined;
     }
-    
-    const anonymizedId = this.config.anonymizationEnabled 
-      ? this.anonymizeSessionId(this.currentSessionId) 
+
+    const anonymizedId = this.config.anonymizationEnabled
+      ? this.anonymizeSessionId(this.currentSessionId)
       : this.currentSessionId;
-    
-    return this.stats.sessions.find(s => s.sessionId === anonymizedId);
+
+    return this.stats.sessions.find((s) => s.sessionId === anonymizedId);
   }
 
   private anonymizeSessionId(sessionId: string): string {
@@ -514,7 +558,7 @@ export class UsageStatsManager {
     // Remove any sensitive information from commands
     const parts = command.split(' ');
     const baseCommand = parts[0];
-    
+
     // Keep only the base command and anonymize arguments
     if (parts.length > 1) {
       return `${baseCommand} <args>`;
@@ -524,8 +568,16 @@ export class UsageStatsManager {
 
   private anonymizeProviderId(providerId: string): string {
     // Keep provider types but anonymize specific identifiers
-    const knownProviders = ['gemini', 'openrouter', 'groq', 'anthropic', 'openai'];
-    return knownProviders.includes(providerId.toLowerCase()) ? providerId : 'custom-provider';
+    const knownProviders = [
+      'gemini',
+      'openrouter',
+      'groq',
+      'anthropic',
+      'openai',
+    ];
+    return knownProviders.includes(providerId.toLowerCase())
+      ? providerId
+      : 'custom-provider';
   }
 
   private generateInstallationId(): string {
@@ -537,7 +589,7 @@ export class UsageStatsManager {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash).toString(36);
@@ -552,7 +604,9 @@ let globalUsageStatsManager: UsageStatsManager | null = null;
 /**
  * Gets or creates the global usage stats manager.
  */
-export function getUsageStatsManager(config?: Partial<UsageStatsConfig>): UsageStatsManager {
+export function getUsageStatsManager(
+  config?: Partial<UsageStatsConfig>,
+): UsageStatsManager {
   if (!globalUsageStatsManager) {
     globalUsageStatsManager = new UsageStatsManager(config);
   }
@@ -562,7 +616,9 @@ export function getUsageStatsManager(config?: Partial<UsageStatsConfig>): UsageS
 /**
  * Initializes the global usage stats manager.
  */
-export async function initializeUsageStats(config?: Partial<UsageStatsConfig>): Promise<void> {
+export async function initializeUsageStats(
+  config?: Partial<UsageStatsConfig>,
+): Promise<void> {
   const manager = getUsageStatsManager(config);
   await manager.initialize();
 }

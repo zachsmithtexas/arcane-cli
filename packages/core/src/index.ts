@@ -95,6 +95,8 @@ export * from './telemetry/index.js';
 export * from './telemetry/usageStats.js';
 export * from './agents/types.js';
 export * from './agents/manager.js';
+export * from './agents/metadata.js';
 export * from './agents/generator.js';
+export * from './providers/loader.js';
 export { sessionId } from './utils/session.js';
 export * from './utils/browser.js';

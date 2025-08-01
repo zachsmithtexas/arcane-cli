@@ -8,7 +8,7 @@
 
 /**
  * @fileoverview Type definitions for the agent, role, and skill system.
- * 
+ *
  * This module defines the core data structures and interfaces for managing
  * AI agents, their roles, and skills within the Arcane CLI system.
  */
@@ -96,7 +96,7 @@ export const AgentSchema = z.object({
   updated: z.string().optional(), // ISO date
   version: z.string().default('1.0.0'),
   tags: z.array(z.string()).default([]),
-  metadata: z.record(z.string(), z.any()).default({}),
+  metadata: z.record(z.string(), z.unknown()).default({}),
 });
 
 export type Agent = z.infer<typeof AgentSchema>;
@@ -123,7 +123,7 @@ export interface GenerationTemplate {
   description: string;
   category?: string;
   tags?: string[];
-  additionalFields?: Record<string, any>;
+  additionalFields?: Record<string, unknown>;
 }
 
 /**

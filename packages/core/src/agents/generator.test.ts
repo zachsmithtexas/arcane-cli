@@ -17,33 +17,38 @@ const mockAgentManager = {
   createRole: vi.fn(),
   createSkill: vi.fn(),
   list: vi.fn(),
-} as any;
+};
 
 // Mock prompt interface
 class MockPromptInterface implements PromptInterface {
-  private responses: any[] = [];
+  private responses: unknown[] = [];
   private currentIndex = 0;
 
-  setResponses(responses: any[]) {
+  setResponses(responses: unknown[]) {
     this.responses = responses;
     this.currentIndex = 0;
   }
 
-  async text(message: string, initial?: string): Promise<string> {
+  async text(_message: string, initial?: string): Promise<string> {
     if (this.currentIndex < this.responses.length) {
-      return this.responses[this.currentIndex++] || initial || '';
+      return (this.responses[this.currentIndex++] as string) || initial || '';
     }
     return initial || '';
   }
 
-  async confirm(message: string, initial?: boolean): Promise<boolean> {
+  async confirm(_message: string, initial?: boolean): Promise<boolean> {
     if (this.currentIndex < this.responses.length) {
-      return this.responses[this.currentIndex++] ?? initial ?? false;
+      return (
+        (this.responses[this.currentIndex++] as boolean) ?? initial ?? false
+      );
     }
     return initial ?? false;
   }
 
-  async select(message: string, choices: Array<{ title: string; value: any }>): Promise<any> {
+  async select(
+    _message: string,
+    choices: Array<{ title: string; value: unknown }>,
+  ): Promise<unknown> {
     if (this.currentIndex < this.responses.length) {
       const response = this.responses[this.currentIndex++];
       return response !== undefined ? response : choices[0].value;
@@ -51,16 +56,24 @@ class MockPromptInterface implements PromptInterface {
     return choices[0].value;
   }
 
-  async multiselect(message: string, choices: Array<{ title: string; value: any; selected?: boolean }>): Promise<any[]> {
+  async multiselect(
+    _message: string,
+    _choices: Array<{ title: string; value: unknown; selected?: boolean }>,
+  ): Promise<unknown[]> {
     if (this.currentIndex < this.responses.length) {
-      return this.responses[this.currentIndex++] || [];
+      return (this.responses[this.currentIndex++] as unknown[]) || [];
     }
     return [];
   }
 
-  async number(message: string, initial?: number, min?: number, max?: number): Promise<number> {
+  async number(
+    _message: string,
+    initial?: number,
+    _min?: number,
+    _max?: number,
+  ): Promise<number> {
     if (this.currentIndex < this.responses.length) {
-      return this.responses[this.currentIndex++] ?? initial ?? 0;
+      return (this.responses[this.currentIndex++] as number) ?? initial ?? 0;
     }
     return initial ?? 0;
   }
@@ -73,7 +86,10 @@ describe('InteractiveGenerator', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     promptInterface = new MockPromptInterface();
-    generator = new InteractiveGenerator(promptInterface, mockAgentManager);
+    generator = new InteractiveGenerator(
+      promptInterface,
+      mockAgentManager as unknown as AgentManager,
+    );
   });
 
   describe('agent generation', () => {
@@ -82,7 +98,7 @@ describe('InteractiveGenerator', () => {
         'Test Agent', // name
         'A test agent for unit testing', // description
         '', // personality (empty)
-        '', // instructions (empty)  
+        '', // instructions (empty)
         '', // system prompt (empty)
         false, // configure model
         Priority.MEDIUM, // priority
@@ -105,7 +121,7 @@ describe('InteractiveGenerator', () => {
         }),
         expect.objectContaining({
           interactive: true,
-        })
+        }),
       );
 
       expect(filePath).toBe('/path/to/test-agent.md');
@@ -130,7 +146,9 @@ describe('InteractiveGenerator', () => {
       ]);
 
       mockAgentManager.list.mockResolvedValue([]);
-      mockAgentManager.createAgent.mockResolvedValue('/path/to/advanced-agent.md');
+      mockAgentManager.createAgent.mockResolvedValue(
+        '/path/to/advanced-agent.md',
+      );
 
       await generator.generateAgent({ interactive: true });
 
@@ -145,7 +163,7 @@ describe('InteractiveGenerator', () => {
             systemPrompt: 'You are a helpful assistant',
           }),
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -178,7 +196,7 @@ describe('InteractiveGenerator', () => {
             temperature: undefined, // Should be undefined due to invalid input
           }),
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -217,7 +235,7 @@ describe('InteractiveGenerator', () => {
         }),
         expect.objectContaining({
           interactive: true,
-        })
+        }),
       );
 
       expect(filePath).toBe('/path/to/test-role.md');
@@ -257,12 +275,15 @@ describe('InteractiveGenerator', () => {
           additionalFields: expect.objectContaining({
             level: SkillLevel.INTERMEDIATE,
             prerequisites: ['Basic programming knowledge'],
-            examples: ['Write unit tests for functions', 'Create integration test suites'],
+            examples: [
+              'Write unit tests for functions',
+              'Create integration test suites',
+            ],
           }),
         }),
         expect.objectContaining({
           interactive: true,
-        })
+        }),
       );
 
       expect(filePath).toBe('/path/to/test-skill.md');
@@ -282,7 +303,9 @@ describe('InteractiveGenerator', () => {
       ]);
 
       mockAgentManager.list.mockResolvedValue([]);
-      mockAgentManager.createSkill.mockResolvedValue('/path/to/simple-skill.md');
+      mockAgentManager.createSkill.mockResolvedValue(
+        '/path/to/simple-skill.md',
+      );
 
       await generator.generateSkill({ interactive: true });
 
@@ -290,7 +313,7 @@ describe('InteractiveGenerator', () => {
         expect.objectContaining({
           category: undefined,
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -301,8 +324,9 @@ describe('InteractiveGenerator', () => {
         '', // empty name
       ]);
 
-      await expect(generator.generateAgent({ interactive: true }))
-        .rejects.toThrow('Agent name is required');
+      await expect(
+        generator.generateAgent({ interactive: true }),
+      ).rejects.toThrow('Agent name is required');
     });
 
     it('should throw error for missing role description', async () => {
@@ -311,8 +335,9 @@ describe('InteractiveGenerator', () => {
         '', // empty description
       ]);
 
-      await expect(generator.generateRole({ interactive: true }))
-        .rejects.toThrow('Role description is required');
+      await expect(
+        generator.generateRole({ interactive: true }),
+      ).rejects.toThrow('Role description is required');
     });
 
     it('should throw error for missing skill name', async () => {
@@ -320,15 +345,20 @@ describe('InteractiveGenerator', () => {
         '', // empty name
       ]);
 
-      await expect(generator.generateSkill({ interactive: true }))
-        .rejects.toThrow('Skill name is required');
+      await expect(
+        generator.generateSkill({ interactive: true }),
+      ).rejects.toThrow('Skill name is required');
     });
   });
 
   describe('template integration', () => {
     it('should work with existing roles and skills', async () => {
       const existingRoles = [
-        { name: 'Developer', description: 'Software developer role', type: 'role' },
+        {
+          name: 'Developer',
+          description: 'Software developer role',
+          type: 'role',
+        },
         { name: 'Tester', description: 'Quality assurance role', type: 'role' },
       ];
 
@@ -355,7 +385,9 @@ describe('InteractiveGenerator', () => {
         .mockResolvedValueOnce(existingRoles) // for roles
         .mockResolvedValueOnce(existingSkills); // for skills
 
-      mockAgentManager.createAgent.mockResolvedValue('/path/to/full-stack-agent.md');
+      mockAgentManager.createAgent.mockResolvedValue(
+        '/path/to/full-stack-agent.md',
+      );
 
       await generator.generateAgent({ interactive: true });
 
@@ -367,7 +399,7 @@ describe('InteractiveGenerator', () => {
             tools: ['read-file', 'write-file'],
           }),
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });

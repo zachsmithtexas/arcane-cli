@@ -8,13 +8,13 @@
 
 /**
  * @fileoverview CLI command for generating agents, roles, and skills.
- * 
+ *
  * This module provides the CLI interface for the agent generation system
  * with interactive prompts and template support.
  */
 
-import { 
-  getAgentManager, 
+import {
+  getAgentManager,
   initializeAgentManager,
   InteractiveGenerator,
   PromptInterface,
@@ -23,6 +23,8 @@ import {
   SKILL_TEMPLATES,
   GenerationTemplate,
   GenerationOptions,
+  AgentManager,
+  SearchResult,
 } from '@google/gemini-cli-core';
 
 /**
@@ -34,7 +36,7 @@ class ConsolePromptInterface implements PromptInterface {
     // This is a simplified implementation
     // In practice, you'd use a proper prompting library
     process.stdout.write(`${message} ${initial ? `(${initial}) ` : ''}`);
-    
+
     return new Promise((resolve) => {
       process.stdin.once('data', (data) => {
         const input = data.toString().trim();
@@ -44,9 +46,10 @@ class ConsolePromptInterface implements PromptInterface {
   }
 
   async confirm(message: string, initial?: boolean): Promise<boolean> {
-    const defaultText = initial === undefined ? '' : initial ? ' (Y/n)' : ' (y/N)';
+    const defaultText =
+      initial === undefined ? '' : initial ? ' (Y/n)' : ' (y/N)';
     process.stdout.write(`${message}${defaultText} `);
-    
+
     return new Promise((resolve) => {
       process.stdin.once('data', (data) => {
         const input = data.toString().trim().toLowerCase();
@@ -59,14 +62,17 @@ class ConsolePromptInterface implements PromptInterface {
     });
   }
 
-  async select(message: string, choices: Array<{ title: string; value: any }>): Promise<any> {
+  async select(
+    message: string,
+    choices: Array<{ title: string; value: unknown }>,
+  ): Promise<unknown> {
     console.log(message);
     choices.forEach((choice, index) => {
       console.log(`  ${index + 1}. ${choice.title}`);
     });
-    
+
     process.stdout.write('Select option (number): ');
-    
+
     return new Promise((resolve) => {
       process.stdin.once('data', (data) => {
         const input = parseInt(data.toString().trim(), 10);
@@ -80,16 +86,21 @@ class ConsolePromptInterface implements PromptInterface {
     });
   }
 
-  async multiselect(message: string, choices: Array<{ title: string; value: any; selected?: boolean }>): Promise<any[]> {
+  async multiselect(
+    message: string,
+    choices: Array<{ title: string; value: unknown; selected?: boolean }>,
+  ): Promise<unknown[]> {
     console.log(message);
-    console.log('Enter numbers separated by commas (e.g., 1,3,5) or press Enter for none:');
-    
+    console.log(
+      'Enter numbers separated by commas (e.g., 1,3,5) or press Enter for none:',
+    );
+
     choices.forEach((choice, index) => {
       console.log(`  ${index + 1}. ${choice.title}`);
     });
-    
+
     process.stdout.write('Select options: ');
-    
+
     return new Promise((resolve) => {
       process.stdin.once('data', (data) => {
         const input = data.toString().trim();
@@ -97,50 +108,60 @@ class ConsolePromptInterface implements PromptInterface {
           resolve([]);
           return;
         }
-        
-        const selected: any[] = [];
-        const indices = input.split(',').map(s => parseInt(s.trim(), 10));
-        
+
+        const selected: unknown[] = [];
+        const indices = input.split(',').map((s) => parseInt(s.trim(), 10));
+
         for (const index of indices) {
           if (index >= 1 && index <= choices.length) {
             selected.push(choices[index - 1].value);
           }
         }
-        
+
         resolve(selected);
       });
     });
   }
 
-  async number(message: string, initial?: number, min?: number, max?: number): Promise<number> {
+  async number(
+    message: string,
+    initial?: number,
+    min?: number,
+    max?: number,
+  ): Promise<number> {
     const constraints = [];
     if (min !== undefined) constraints.push(`min: ${min}`);
     if (max !== undefined) constraints.push(`max: ${max}`);
-    const constraintText = constraints.length > 0 ? ` (${constraints.join(', ')})` : '';
-    
-    process.stdout.write(`${message}${constraintText} ${initial !== undefined ? `(${initial}) ` : ''}`);
-    
+    const constraintText =
+      constraints.length > 0 ? ` (${constraints.join(', ')})` : '';
+
+    process.stdout.write(
+      `${message}${constraintText} ${
+        initial !== undefined ? `(${initial}) ` : ''
+      }`,
+    );
+
     return new Promise((resolve) => {
       process.stdin.once('data', (data) => {
         const input = parseFloat(data.toString().trim());
-        
+
         if (isNaN(input)) {
           resolve(initial ?? 0);
           return;
         }
-        
+
         if (min !== undefined && input < min) {
           console.log(`Value too low, using minimum: ${min}`);
           resolve(min);
           return;
         }
-        
+
         if (max !== undefined && input > max) {
           console.log(`Value too high, using maximum: ${max}`);
           resolve(max);
           return;
         }
-        
+
         resolve(input);
       });
     });
@@ -170,19 +191,19 @@ export async function handleGenerateCommand(args: GenerateArgs): Promise<void> {
     // Initialize agent manager
     await initializeAgentManager();
     const agentManager = getAgentManager();
-    
+
     // Handle list command
     if (args.list) {
       await handleListCommand(agentManager, args.type);
       return;
     }
-    
+
     // Handle search command
     if (args.search) {
       await handleSearchCommand(agentManager, args.search, args.type);
       return;
     }
-    
+
     // Handle generation
     const options: GenerationOptions = {
       interactive: args.interactive ?? true,
@@ -191,15 +212,17 @@ export async function handleGenerateCommand(args: GenerateArgs): Promise<void> {
       dryRun: args.dryRun ?? false,
       overwrite: args.overwrite ?? false,
     };
-    
+
     if (args.interactive) {
       await handleInteractiveGeneration(agentManager, args.type, options);
     } else {
       await handleNonInteractiveGeneration(agentManager, args, options);
     }
-    
   } catch (error) {
-    console.error('❌ Generation failed:', error instanceof Error ? error.message : error);
+    console.error(
+      '❌ Generation failed:',
+      error instanceof Error ? error.message : error,
+    );
     process.exit(1);
   }
 }
@@ -208,15 +231,15 @@ export async function handleGenerateCommand(args: GenerateArgs): Promise<void> {
  * Handles interactive generation with prompts.
  */
 async function handleInteractiveGeneration(
-  agentManager: any, 
-  type: 'agent' | 'role' | 'skill', 
-  options: GenerationOptions
+  agentManager: AgentManager,
+  type: 'agent' | 'role' | 'skill',
+  options: GenerationOptions,
 ): Promise<void> {
   const promptInterface = new ConsolePromptInterface();
   const generator = new InteractiveGenerator(promptInterface, agentManager);
-  
+
   let filePath: string;
-  
+
   switch (type) {
     case 'agent':
       filePath = await generator.generateAgent(options);
@@ -230,11 +253,17 @@ async function handleInteractiveGeneration(
     default:
       throw new Error(`Unknown type: ${type}`);
   }
-  
+
   if (options.dryRun) {
-    console.log(`\n✅ Dry run completed. ${type} would be created at: ${filePath}`);
+    console.log(
+      `\n✅ Dry run completed. ${type} would be created at: ${filePath}`,
+    );
   } else {
-    console.log(`\n✅ ${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`);
+    console.log(
+      `\n✅ ${
+        type.charAt(0).toUpperCase() + type.slice(1)
+      } created successfully!`,
+    );
     console.log(`📄 File: ${filePath}`);
   }
 }
@@ -243,16 +272,16 @@ async function handleInteractiveGeneration(
  * Handles non-interactive generation using templates or provided data.
  */
 async function handleNonInteractiveGeneration(
-  agentManager: any,
+  agentManager: AgentManager,
   args: GenerateArgs,
-  options: GenerationOptions
+  options: GenerationOptions,
 ): Promise<void> {
   if (!args.name) {
     throw new Error('Name is required for non-interactive generation');
   }
-  
+
   let template: GenerationTemplate;
-  
+
   if (args.template) {
     template = getTemplate(args.type, args.template, args.name);
   } else {
@@ -264,9 +293,9 @@ async function handleNonInteractiveGeneration(
       tags: [],
     };
   }
-  
+
   let filePath: string;
-  
+
   switch (args.type) {
     case 'agent':
       filePath = await agentManager.createAgent(template, options);
@@ -280,11 +309,17 @@ async function handleNonInteractiveGeneration(
     default:
       throw new Error(`Unknown type: ${args.type}`);
   }
-  
+
   if (options.dryRun) {
-    console.log(`✅ Dry run completed. ${args.type} would be created at: ${filePath}`);
+    console.log(
+      `✅ Dry run completed. ${args.type} would be created at: ${filePath}`,
+    );
   } else {
-    console.log(`✅ ${args.type.charAt(0).toUpperCase() + args.type.slice(1)} '${args.name}' created successfully!`);
+    console.log(
+      `✅ ${
+        args.type.charAt(0).toUpperCase() + args.type.slice(1)
+      } '${args.name}' created successfully!`,
+    );
     console.log(`📄 File: ${filePath}`);
   }
 }
@@ -292,30 +327,39 @@ async function handleNonInteractiveGeneration(
 /**
  * Handles the list command.
  */
-async function handleListCommand(agentManager: any, type?: 'agent' | 'role' | 'skill'): Promise<void> {
+async function handleListCommand(
+  agentManager: AgentManager,
+  type?: 'agent' | 'role' | 'skill',
+): Promise<void> {
   const results = await agentManager.list(type);
-  
+
   if (results.length === 0) {
     console.log(`No ${type || 'items'} found.`);
     return;
   }
-  
+
   console.log(`\n📋 Available ${type || 'items'}:\n`);
-  
-  const grouped = results.reduce((acc: Record<string, any[]>, item: any) => {
-    if (!acc[item.type]) acc[item.type] = [];
-    acc[item.type].push(item);
-    return acc;
-  }, {});
-  
+
+  const grouped = results.reduce(
+    (acc: Record<string, SearchResult[]>, item: SearchResult) => {
+      if (!acc[item.type]) acc[item.type] = [];
+      acc[item.type].push(item);
+      return acc;
+    },
+    {},
+  );
+
   for (const [itemType, items] of Object.entries(grouped)) {
-    const icon = itemType === 'agent' ? '🤖' : itemType === 'role' ? '👔' : '🎯';
-    console.log(`${icon} ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}s:`);
-    
-    (items as any[]).forEach((item: any) => {
+    const icon =
+      itemType === 'agent' ? '🤖' : itemType === 'role' ? '👔' : '🎯';
+    console.log(
+      `${icon} ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}s:`,
+    );
+
+    items.forEach((item: SearchResult) => {
       console.log(`  • ${item.name} - ${item.description}`);
     });
-    
+
     console.log();
   }
 }
@@ -324,21 +368,22 @@ async function handleListCommand(agentManager: any, type?: 'agent' | 'role' | 's
  * Handles the search command.
  */
 async function handleSearchCommand(
-  agentManager: any, 
-  query: string, 
-  type?: 'agent' | 'role' | 'skill'
+  agentManager: AgentManager,
+  query: string,
+  type?: 'agent' | 'role' | 'skill',
 ): Promise<void> {
   const results = await agentManager.search(query, type);
-  
+
   if (results.length === 0) {
     console.log(`No results found for "${query}".`);
     return;
   }
-  
+
   console.log(`\n🔍 Search results for "${query}":\n`);
-  
-  results.forEach((result: any, index: number) => {
-    const icon = result.type === 'agent' ? '🤖' : result.type === 'role' ? '👔' : '🎯';
+
+  results.forEach((result: SearchResult, index: number) => {
+    const icon =
+      result.type === 'agent' ? '🤖' : result.type === 'role' ? '👔' : '🎯';
     const score = Math.round(result.score * 100);
     console.log(`${index + 1}. ${icon} ${result.name} (${score}% match)`);
     console.log(`   ${result.description}`);
@@ -349,9 +394,13 @@ async function handleSearchCommand(
 /**
  * Gets a template by name and type.
  */
-function getTemplate(type: 'agent' | 'role' | 'skill', templateName: string, name: string): GenerationTemplate {
+function getTemplate(
+  type: 'agent' | 'role' | 'skill',
+  templateName: string,
+  name: string,
+): GenerationTemplate {
   let templates: Record<string, Partial<GenerationTemplate>>;
-  
+
   switch (type) {
     case 'agent':
       templates = AGENT_TEMPLATES;
@@ -365,13 +414,15 @@ function getTemplate(type: 'agent' | 'role' | 'skill', templateName: string, nam
     default:
       throw new Error(`Unknown type: ${type}`);
   }
-  
+
   const template = templates[templateName];
   if (!template) {
     const available = Object.keys(templates).join(', ');
-    throw new Error(`Template '${templateName}' not found. Available templates: ${available}`);
+    throw new Error(
+      `Template '${templateName}' not found. Available templates: ${available}`,
+    );
   }
-  
+
   return {
     type,
     name,
@@ -388,7 +439,7 @@ function getTemplate(type: 'agent' | 'role' | 'skill', templateName: string, nam
 export function listTemplates(type: 'agent' | 'role' | 'skill'): void {
   let templates: Record<string, Partial<GenerationTemplate>>;
   let icon: string;
-  
+
   switch (type) {
     case 'agent':
       templates = AGENT_TEMPLATES;
@@ -405,9 +456,9 @@ export function listTemplates(type: 'agent' | 'role' | 'skill'): void {
     default:
       throw new Error(`Unknown type: ${type}`);
   }
-  
+
   console.log(`\n${icon} Available ${type} templates:\n`);
-  
+
   Object.entries(templates).forEach(([name, template]) => {
     console.log(`• ${name}`);
     if (template.description) {

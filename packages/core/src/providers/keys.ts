@@ -88,11 +88,11 @@ export class ProviderKeyManager {
 
   constructor(
     private providerId: string,
-    keys: (string | ApiKeyMetadata)[],
+    keys: Array<string | ApiKeyMetadata>,
     config: Partial<KeyRotationConfig> = {},
   ) {
     this.config = KeyRotationConfigSchema.parse(config);
-    this.keys = keys.map((key, index) => {
+    this.keys = keys.map((key) => {
       if (typeof key === 'string') {
         return ApiKeyMetadataSchema.parse({ key });
       }
@@ -146,9 +146,9 @@ export class ProviderKeyManager {
    */
   removeKey(keyOrIndex: string | number): boolean {
     let indexToRemove: number;
-    
+
     if (typeof keyOrIndex === 'string') {
-      indexToRemove = this.keys.findIndex(k => k.key === keyOrIndex);
+      indexToRemove = this.keys.findIndex((k) => k.key === keyOrIndex);
     } else {
       indexToRemove = keyOrIndex;
     }
@@ -158,12 +158,12 @@ export class ProviderKeyManager {
     }
 
     this.keys.splice(indexToRemove, 1);
-    
+
     // Adjust current index if necessary
     if (this.currentKeyIndex >= indexToRemove && this.currentKeyIndex > 0) {
       this.currentKeyIndex--;
     }
-    
+
     return true;
   }
 
@@ -205,13 +205,19 @@ export class ProviderKeyManager {
     // Update key status based on failure reason
     if (reason === KeyFailureReason.RATE_LIMIT) {
       currentKey.status = KeyStatus.RATE_LIMITED;
-      currentKey.rateLimitResetTime = Date.now() + (this.config.rateLimitBackoffMinutes * 60 * 1000);
-    } else if (currentKey.failureCount >= this.config.maxFailuresBeforeDisable) {
+      currentKey.rateLimitResetTime =
+        Date.now() + this.config.rateLimitBackoffMinutes * 60 * 1000;
+    } else if (
+      currentKey.failureCount >= this.config.maxFailuresBeforeDisable
+    ) {
       currentKey.status = KeyStatus.FAILED;
     }
 
     // Only rotate if the current key is now disabled (failed or rate limited)
-    if (this.config.enableAutoRotation && currentKey.status !== KeyStatus.ACTIVE) {
+    if (
+      this.config.enableAutoRotation &&
+      currentKey.status !== KeyStatus.ACTIVE
+    ) {
       return this.rotateToNextKey();
     }
 
@@ -222,17 +228,23 @@ export class ProviderKeyManager {
    * Manually rotates to the next available key.
    */
   rotateToNextKey(): boolean {
-    const nextIndex = this.findNextActiveKeyIndex((this.currentKeyIndex + 1) % this.keys.length);
-    
+    const nextIndex = this.findNextActiveKeyIndex(
+      (this.currentKeyIndex + 1) % this.keys.length,
+    );
+
     if (nextIndex === -1) {
-      console.error(`No active keys available for provider '${this.providerId}'`);
+      console.error(
+        `No active keys available for provider '${this.providerId}'`,
+      );
       return false;
     }
 
     if (nextIndex !== this.currentKeyIndex) {
       this.currentKeyIndex = nextIndex;
       if (this.config.enableFailureLogging) {
-        console.log(`Rotated to key ${this.currentKeyIndex} for provider '${this.providerId}'`);
+        console.log(
+          `Rotated to key ${this.currentKeyIndex} for provider '${this.providerId}'`,
+        );
       }
       return true;
     }
@@ -260,13 +272,21 @@ export class ProviderKeyManager {
 
     for (const key of this.keys) {
       // Reset rate-limited keys
-      if (key.status === KeyStatus.RATE_LIMITED && key.rateLimitResetTime && now > key.rateLimitResetTime) {
+      if (
+        key.status === KeyStatus.RATE_LIMITED &&
+        key.rateLimitResetTime &&
+        now > key.rateLimitResetTime
+      ) {
         key.status = KeyStatus.ACTIVE;
         key.rateLimitResetTime = undefined;
       }
 
       // Reset failed keys after the configured time
-      if (key.status === KeyStatus.FAILED && key.lastFailureTime && (now - key.lastFailureTime) > failureResetTime) {
+      if (
+        key.status === KeyStatus.FAILED &&
+        key.lastFailureTime &&
+        now - key.lastFailureTime > failureResetTime
+      ) {
         key.status = KeyStatus.ACTIVE;
         key.failureCount = 0;
         key.lastFailureTime = undefined;
@@ -286,18 +306,23 @@ export class ProviderKeyManager {
   } {
     const now = Date.now();
     const last24Hours = 24 * 60 * 60 * 1000;
-    
-    const recentFailures = this.failureLog.filter(f => (now - f.timestamp) < last24Hours).length;
-    const failuresByReason = this.failureLog.reduce((acc, failure) => {
-      acc[failure.reason] = (acc[failure.reason] || 0) + 1;
-      return acc;
-    }, {} as Record<KeyFailureReason, number>);
+
+    const recentFailures = this.failureLog.filter(
+      (f) => now - f.timestamp < last24Hours,
+    ).length;
+    const failuresByReason = this.failureLog.reduce(
+      (acc, failure) => {
+        acc[failure.reason] = (acc[failure.reason] || 0) + 1;
+        return acc;
+      },
+      {} as Record<KeyFailureReason, number>,
+    );
 
     return {
       totalFailures: this.failureLog.length,
       recentFailures,
       failuresByReason,
-      activeKeys: this.keys.filter(k => k.status === KeyStatus.ACTIVE).length,
+      activeKeys: this.keys.filter((k) => k.status === KeyStatus.ACTIVE).length,
       totalKeys: this.keys.length,
     };
   }
@@ -338,7 +363,7 @@ export class GlobalKeyManager {
    */
   registerProvider(
     providerId: string,
-    keys: (string | ApiKeyMetadata)[],
+    keys: Array<string | ApiKeyMetadata>,
     config?: Partial<KeyRotationConfig>,
   ): void {
     const mergedConfig = { ...this.globalConfig, ...config };
@@ -390,13 +415,19 @@ export class GlobalKeyManager {
   /**
    * Gets aggregated failure statistics across all providers.
    */
-  getGlobalStats(): Record<string, ReturnType<ProviderKeyManager['getFailureStats']>> {
-    const stats: Record<string, ReturnType<ProviderKeyManager['getFailureStats']>> = {};
-    
+  getGlobalStats(): Record<
+    string,
+    ReturnType<ProviderKeyManager['getFailureStats']>
+  > {
+    const stats: Record<
+      string,
+      ReturnType<ProviderKeyManager['getFailureStats']>
+    > = {};
+
     for (const [providerId, manager] of this.providerManagers) {
       stats[providerId] = manager.getFailureStats();
     }
-    
+
     return stats;
   }
 

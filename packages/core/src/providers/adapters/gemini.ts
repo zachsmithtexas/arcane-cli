@@ -45,7 +45,7 @@ export default class GeminiAdapter implements ProviderAdapter {
     if (!this.apiKey) {
       throw new Error('Gemini API key is required.');
     }
-    
+
     const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
     const result = await model.generateContent(prompt);
     const response = await result.response;
