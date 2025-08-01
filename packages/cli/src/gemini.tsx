@@ -62,8 +62,17 @@ async function handleProviderCommand(argv: CliArgs) {
 
   switch (argv.action) {
     case 'list':
-      console.log('Available providers:', config.providers);
+      console.log('Available providers:');
+      config.providers.forEach((provider: any, index: number) => {
+        const keyCount = provider.apiKeys ? provider.apiKeys.length : (provider.apiKey ? 1 : 0);
+        const status = provider.enabled ? '✅ enabled' : '❌ disabled';
+        console.log(`  ${index + 1}. ${provider.id} (${keyCount} keys) - ${status}`);
+      });
+      if (config.fallbackOrder && config.fallbackOrder.length > 0) {
+        console.log('Fallback order:', config.fallbackOrder.join(' → '));
+      }
       break;
+
     case 'set':
       if (!argv.id) {
         throw new Error('Provider ID is required to set the active provider.');
@@ -72,27 +81,184 @@ async function handleProviderCommand(argv: CliArgs) {
         argv.id,
         ...config.fallbackOrder.filter((p: string) => p !== argv.id),
       ];
+      console.log(`Set '${argv.id}' as primary provider.`);
       break;
+
     case 'add':
       if (!argv.id) {
         throw new Error('Provider ID is required to add a new provider.');
       }
-      config.providers.push({
+      
+      // Check if provider already exists
+      const existingProvider = config.providers.find((p: any) => p.id === argv.id);
+      if (existingProvider) {
+        throw new Error(`Provider '${argv.id}' already exists. Use 'keys add' to add more API keys.`);
+      }
+
+      const newProvider: any = {
         id: argv.id,
-        apiKey: argv.apiKey,
         enabled: true,
-      });
+      };
+
+      // Support both legacy single key and new multi-key format
+      if (argv.apiKey) {
+        newProvider.apiKeys = [argv.apiKey];
+      } else {
+        newProvider.apiKeys = [];
+      }
+
+      config.providers.push(newProvider);
+      console.log(`Added provider '${argv.id}'.`);
       break;
+
+    case 'keys':
+      await handleKeyCommand(config, argv);
+      break;
+
     default:
       console.log(
-        'Invalid provider command. Available commands: list, set, add',
+        'Invalid provider command. Available commands: list, set, add, keys',
       );
-      break;
+      return; // Don't save config for invalid commands
   }
 
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
-  console.log('Provider configuration updated.');
+  if (argv.action !== 'keys') {
+    console.log('Provider configuration updated.');
+  }
   // TODO: Reload ProviderManager
+}
+
+async function handleKeyCommand(config: any, argv: CliArgs) {
+  const subcommand = argv.subcommand || argv._[1]; // Handle both direct and nested commands
+  
+  switch (subcommand) {
+    case 'list':
+      console.log('API Keys by Provider:');
+      config.providers.forEach((provider: any) => {
+        console.log(`\n📡 ${provider.id}:`);
+        const keys = provider.apiKeys || (provider.apiKey ? [provider.apiKey] : []);
+        if (keys.length === 0) {
+          console.log('  No API keys configured');
+        } else {
+          keys.forEach((key: any, index: number) => {
+            const keyStr = typeof key === 'string' ? key : key.key;
+            const masked = keyStr.substring(0, 8) + '...' + keyStr.substring(keyStr.length - 4);
+            const status = typeof key === 'object' && key.status ? key.status : 'active';
+            const indicator = status === 'active' ? '🟢' : status === 'rate_limited' ? '🟡' : '🔴';
+            console.log(`    ${index + 1}. ${masked} ${indicator} ${status}`);
+          });
+        }
+      });
+      break;
+
+    case 'add':
+      if (!argv.id && !argv.provider) {
+        throw new Error('Provider ID is required (use --id or --provider).');
+      }
+      if (!argv.apiKey && !argv.key) {
+        throw new Error('API key is required (use --api-key or --key).');
+      }
+
+      const providerId = argv.id || argv.provider;
+      const newKey = argv.apiKey || argv.key;
+      const provider = config.providers.find((p: any) => p.id === providerId);
+      
+      if (!provider) {
+        throw new Error(`Provider '${providerId}' not found. Use 'provider add' first.`);
+      }
+
+      // Initialize apiKeys if not present
+      if (!provider.apiKeys) {
+        provider.apiKeys = provider.apiKey ? [provider.apiKey] : [];
+        delete provider.apiKey; // Remove legacy single key
+      }
+
+      // Check for duplicate keys
+      const existingKeys = provider.apiKeys.map((k: any) => typeof k === 'string' ? k : k.key);
+      if (existingKeys.includes(newKey)) {
+        throw new Error('This API key already exists for this provider.');
+      }
+
+      provider.apiKeys.push(newKey);
+      console.log(`Added API key to provider '${providerId}' (${provider.apiKeys.length} total keys).`);
+      break;
+
+    case 'set':
+      if (!argv.id && !argv.provider) {
+        throw new Error('Provider ID is required (use --id or --provider).');
+      }
+      if (!argv.apiKey && !argv.key) {
+        throw new Error('API key is required (use --api-key or --key).');
+      }
+
+      const setProviderId = argv.id || argv.provider;
+      const activeKey = argv.apiKey || argv.key;
+      const setProvider = config.providers.find((p: any) => p.id === setProviderId);
+      
+      if (!setProvider) {
+        throw new Error(`Provider '${setProviderId}' not found.`);
+      }
+
+      // Find the key and move it to the front (making it primary)
+      const keys = setProvider.apiKeys || [];
+      const keyIndex = keys.findIndex((k: any) => {
+        const keyStr = typeof k === 'string' ? k : k.key;
+        return keyStr === activeKey;
+      });
+
+      if (keyIndex === -1) {
+        throw new Error('Specified API key not found for this provider.');
+      }
+
+      // Move the key to the front
+      const [selectedKey] = keys.splice(keyIndex, 1);
+      keys.unshift(selectedKey);
+      setProvider.apiKeys = keys;
+
+      console.log(`Set API key as primary for provider '${setProviderId}'.`);
+      break;
+
+    case 'status':
+    case 'stats':
+      console.log('🔍 Provider Key Statistics:');
+      config.providers.forEach((provider: any) => {
+        const keys = provider.apiKeys || (provider.apiKey ? [provider.apiKey] : []);
+        console.log(`\n📡 ${provider.id}:`);
+        console.log(`  Total keys: ${keys.length}`);
+        
+        if (keys.length > 0) {
+          let activeCount = 0;
+          let rateLimitedCount = 0;
+          let failedCount = 0;
+          
+          keys.forEach((key: any) => {
+            if (typeof key === 'object' && key.status) {
+              switch (key.status) {
+                case 'active': activeCount++; break;
+                case 'rate_limited': rateLimitedCount++; break;
+                case 'failed': failedCount++; break;
+              }
+            } else {
+              activeCount++; // Assume string keys are active
+            }
+          });
+
+          console.log(`  Active: ${activeCount} 🟢`);
+          if (rateLimitedCount > 0) console.log(`  Rate Limited: ${rateLimitedCount} 🟡`);
+          if (failedCount > 0) console.log(`  Failed: ${failedCount} 🔴`);
+        } else {
+          console.log('  No keys configured ⚠️');
+        }
+      });
+      break;
+
+    default:
+      console.log(
+        'Invalid key command. Available commands: list, add, set, status, stats',
+      );
+      break;
+  }
 }
 
 function getNodeMemoryArgs(config: Config): string[] {

@@ -14,14 +14,22 @@
  */
 
 import { z } from 'zod';
+import { 
+  ApiKeyMetadataSchema, 
+  KeyRotationConfigSchema, 
+  GlobalKeyManager, 
+  KeyFailureReason 
+} from './keys.js';
 
 /**
  * Defines the schema for a single provider's configuration.
  */
 export const ProviderConfigSchema = z.object({
   id: z.string().nonempty(),
-  apiKey: z.string().optional(),
+  apiKey: z.string().optional(), // Legacy single key support
+  apiKeys: z.array(z.union([z.string(), ApiKeyMetadataSchema])).optional(), // New multi-key support
   enabled: z.boolean().default(true),
+  keyRotationConfig: KeyRotationConfigSchema.partial().optional(),
 });
 
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
@@ -47,9 +55,16 @@ export interface ProviderAdapter {
   readonly id: string;
 
   /**
+   * Sets the API key for this provider instance.
+   * @param apiKey The API key to use for requests.
+   */
+  setApiKey(apiKey: string): void;
+
+  /**
    * Generates content based on a given prompt.
    * @param prompt The input prompt to send to the AI model.
    * @returns A promise that resolves with the generated content.
+   * @throws Will throw specific errors that can be categorized for key rotation.
    */
   generateContent(prompt: string): Promise<string>;
 }
@@ -91,9 +106,11 @@ async function loadProviderAdapter(
 export class ProviderManager {
   private providers: Map<string, ProviderAdapter> = new Map();
   private fallbackOrder: string[] = [];
+  private keyManager: GlobalKeyManager;
 
   constructor(private config: ProvidersConfig) {
     this.fallbackOrder = config.fallbackOrder || [];
+    this.keyManager = new GlobalKeyManager();
   }
 
   /**
@@ -103,10 +120,39 @@ export class ProviderManager {
     for (const providerConfig of this.config.providers) {
       if (providerConfig.enabled) {
         try {
+          // Determine which keys to use (support both legacy single key and new multi-key)
+          let keys: (string | any)[] = [];
+          if (providerConfig.apiKeys && providerConfig.apiKeys.length > 0) {
+            keys = providerConfig.apiKeys;
+          } else if (providerConfig.apiKey) {
+            keys = [providerConfig.apiKey];
+          }
+
+          if (keys.length === 0) {
+            console.warn(`No API keys configured for provider '${providerConfig.id}'. Skipping.`);
+            continue;
+          }
+
+          // Register the provider with the key manager
+          this.keyManager.registerProvider(
+            providerConfig.id,
+            keys,
+            providerConfig.keyRotationConfig
+          );
+
+          // Load the provider adapter
           const adapter = await loadProviderAdapter(providerConfig.id);
-          this.providers.set(providerConfig.id, adapter);
-        } catch (_error) {
-          console.warn(`Could not initialize provider '${providerConfig.id}'.`);
+          
+          // Set initial API key
+          const initialKey = this.keyManager.getCurrentKey(providerConfig.id);
+          if (initialKey) {
+            adapter.setApiKey(initialKey);
+            this.providers.set(providerConfig.id, adapter);
+          } else {
+            console.warn(`No active keys available for provider '${providerConfig.id}'.`);
+          }
+        } catch (error) {
+          console.warn(`Could not initialize provider '${providerConfig.id}':`, error);
         }
       }
     }
@@ -146,24 +192,84 @@ export class ProviderManager {
   }
 
   /**
-   * Generates content using the primary provider, with fallback to other providers.
+   * Generates content using the primary provider, with fallback to other providers and key rotation.
    * @param prompt The input prompt.
    * @returns The generated content.
-   * @throws If all providers fail.
+   * @throws If all providers and keys fail.
    */
   async generateContentWithFallback(prompt: string): Promise<string> {
+    const maxRetries = 3;
+    
     for (const providerId of this.fallbackOrder) {
       const provider = this.getProvider(providerId);
-      if (provider) {
+      if (!provider) {
+        continue;
+      }
+
+      // Try current provider with key rotation support
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          return await provider.generateContent(prompt);
+          // Get current key for this provider
+          const currentKey = this.keyManager.getCurrentKey(providerId);
+          if (!currentKey) {
+            console.warn(`No active keys for provider '${providerId}', skipping.`);
+            break; // Move to next provider
+          }
+
+          // Update provider with current key
+          provider.setApiKey(currentKey);
+
+          // Attempt to generate content
+          const result = await provider.generateContent(prompt);
+          
+          // Record success
+          this.keyManager.recordSuccess(providerId);
+          return result;
+          
         } catch (error) {
-          console.warn(`Provider '${providerId}' failed:`, error);
-          // Try the next provider
+          console.warn(`Provider '${providerId}' failed (attempt ${attempt + 1}):`, error);
+          
+          // Determine failure reason and handle key rotation
+          const failureReason = this.categorizeError(error);
+          const rotated = await this.keyManager.handleProviderFailure(
+            providerId,
+            failureReason,
+            error instanceof Error ? error.message : String(error)
+          );
+
+          // If we couldn't rotate to a new key, break and try next provider
+          if (!rotated) {
+            break;
+          }
+          
+          // If it's a rate limit, wait a bit before retrying
+          if (failureReason === KeyFailureReason.RATE_LIMIT) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          }
         }
       }
     }
-    throw new Error('All providers failed to generate content.');
+    
+    throw new Error('All providers and keys failed to generate content.');
+  }
+
+  /**
+   * Categorizes an error to determine the appropriate key rotation response.
+   */
+  private categorizeError(error: unknown): KeyFailureReason {
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    
+    if (errorMessage.includes('rate limit') || errorMessage.includes('quota') || errorMessage.includes('429')) {
+      return KeyFailureReason.RATE_LIMIT;
+    } else if (errorMessage.includes('invalid') && errorMessage.includes('key')) {
+      return KeyFailureReason.INVALID_KEY;
+    } else if (errorMessage.includes('quota exceeded')) {
+      return KeyFailureReason.QUOTA_EXCEEDED;
+    } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+      return KeyFailureReason.NETWORK_ERROR;
+    }
+    
+    return KeyFailureReason.UNKNOWN;
   }
 
   /**
@@ -174,6 +280,29 @@ export class ProviderManager {
     this.config = newConfig;
     this.fallbackOrder = newConfig.fallbackOrder || [];
     this.providers.clear();
+    // Create new key manager to reset state
+    this.keyManager = new GlobalKeyManager();
     await this.initialize();
+  }
+
+  /**
+   * Gets the global key manager for advanced key operations.
+   */
+  getKeyManager(): GlobalKeyManager {
+    return this.keyManager;
+  }
+
+  /**
+   * Gets key statistics for all providers.
+   */
+  getKeyStats(): Record<string, ReturnType<GlobalKeyManager['getGlobalStats']>[string]> {
+    return this.keyManager.getGlobalStats();
+  }
+
+  /**
+   * Manually resets expired keys across all providers.
+   */
+  resetExpiredKeys(): void {
+    this.keyManager.resetAllExpiredKeys();
   }
 }

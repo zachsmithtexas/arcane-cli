@@ -21,10 +21,9 @@ vi.mock('@google/generative-ai', () => ({
 }));
 
 describe('GeminiAdapter', () => {
-  it('should throw an error if no API key is provided', () => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    expect(() => new GeminiAdapter()).toThrow('Gemini API key is required.');
+  it('should throw an error when generating content without API key', async () => {
+    const adapter = new GeminiAdapter();
+    await expect(adapter.generateContent('test prompt')).rejects.toThrow('Gemini API key is required.');
   });
 
   it('should call the Gemini API with the correct prompt', async () => {
@@ -40,6 +39,20 @@ describe('GeminiAdapter', () => {
       model: 'gemini-pro',
     });
     expect(mockGenerateContent).toHaveBeenCalledWith('test prompt');
+    expect(response).toBe('test response');
+  });
+
+  it('should allow setting API key after construction', async () => {
+    const adapter = new GeminiAdapter();
+    adapter.setApiKey('new-api-key');
+    
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => 'test response',
+      },
+    });
+
+    const response = await adapter.generateContent('test prompt');
     expect(response).toBe('test response');
   });
 });

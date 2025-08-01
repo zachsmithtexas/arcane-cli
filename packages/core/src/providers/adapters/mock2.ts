@@ -13,6 +13,15 @@ import { ProviderAdapter } from '../loader.js';
  */
 export default class Mock2Adapter implements ProviderAdapter {
   readonly id = 'mock2';
+  private apiKey = '';
+
+  /**
+   * Sets the API key for this provider instance.
+   * @param apiKey The API key to use for requests.
+   */
+  setApiKey(apiKey: string): void {
+    this.apiKey = apiKey;
+  }
 
   /**
    * Simulates generating content.
@@ -20,6 +29,6 @@ export default class Mock2Adapter implements ProviderAdapter {
    * @returns A promise that resolves with a mock response.
    */
   async generateContent(prompt: string): Promise<string> {
-    return `Mock2 response for prompt: "${prompt}"`;
+    return `Mock2 response for prompt: "${prompt}" (key: ${this.apiKey.substring(0, 8)}...)`;
   }
 }

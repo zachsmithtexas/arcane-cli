@@ -17,7 +17,7 @@
        _Criteria:_ Can switch active provider or add new ones via CLI/config, with instant effect.  
        _File:_ `cli/provider.js`
 
-- [ ] **API Key Rotation & Provider Fallback:**  
+- [x] **API Key Rotation & Provider Fallback:**  
        Implement key rotation/fallback logic for rate-limited or failing providers.  
        _Criteria:_ Automatic key fallback, CLI flag to view/set active key, logs failures.  
        _File:_ `/core/providers/keys.js`

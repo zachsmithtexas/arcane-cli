@@ -66,6 +66,8 @@ export interface CliArgs {
   action: string | undefined;
   id: string | undefined;
   apiKey: string | undefined;
+  subcommand: string | undefined; // For provider keys subcommands
+  status: boolean | undefined; // For showing key status
   _: Array<string | number>;
 }
 
@@ -232,7 +234,7 @@ export async function parseArguments(): Promise<CliArgs> {
         .positional('action', {
           describe: 'The action to perform',
           type: 'string',
-          choices: ['list', 'set', 'add'],
+          choices: ['list', 'set', 'add', 'keys'],
         })
         .option('id', {
           type: 'string',
@@ -241,6 +243,29 @@ export async function parseArguments(): Promise<CliArgs> {
         .option('api-key', {
           type: 'string',
           description: 'The API key for the provider',
+        })
+        .command('keys <subcommand>', 'Manage API keys for providers', (yargs) => {
+          yargs
+            .positional('subcommand', {
+              describe: 'Key management action',
+              type: 'string',
+              choices: ['list', 'add', 'set', 'status', 'stats'],
+            })
+            .option('provider', {
+              type: 'string',
+              description: 'Provider ID for key operations',
+              alias: 'p',
+            })
+            .option('key', {
+              type: 'string',
+              description: 'API key to add or set',
+              alias: 'k',
+            })
+            .option('status', {
+              type: 'boolean',
+              description: 'Show detailed status information',
+              default: false,
+            });
         });
     });
 
