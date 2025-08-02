@@ -1,0 +1,5 @@
+#!/bin/bash
+# Arcane CLI launcher script - eliminates need for npm run start --
+
+cd "$(dirname "$0")"
+npm run start -- "$@"

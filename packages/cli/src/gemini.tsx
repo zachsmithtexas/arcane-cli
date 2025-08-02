@@ -106,10 +106,19 @@ async function handleProviderCommand(argv: CliArgs) {
         ],
         'openrouter': [
           'openai/gpt-4',
+          'openai/gpt-4o',
           'openai/gpt-3.5-turbo',
           'anthropic/claude-3-opus',
           'anthropic/claude-3-sonnet',
-          'meta-llama/llama-2-70b-chat'
+          'anthropic/claude-3-haiku',
+          'meta-llama/llama-2-70b-chat',
+          'deepseek/deepseek-r1',
+          'deepseek/deepseek-r1:free',
+          'deepseek/deepseek-chat',
+          'deepseek/deepseek-coder',
+          'google/gemini-pro',
+          'mistralai/mistral-7b-instruct:free',
+          'qwen/qwen-2-72b-instruct'
         ],
         'groq': [
           'llama2-70b-4096',
