@@ -86,25 +86,31 @@ async function handleProviderCommand(argv: CliArgs) {
     case 'list-models': {
       const providerId = argv.id;
       if (!providerId) {
-        throw new Error('Provider ID is required for list-models command. Usage: provider list-models <provider>');
+        throw new Error(
+          'Provider ID is required for list-models command. Usage: provider list-models <provider>',
+        );
       }
-      
-      const provider = config.providers.find((p: ProviderConfig) => p.id === providerId);
+
+      const provider = config.providers.find(
+        (p: ProviderConfig) => p.id === providerId,
+      );
       if (!provider) {
-        throw new Error(`Provider '${providerId}' not found. Run 'provider list' to see available providers.`);
+        throw new Error(
+          `Provider '${providerId}' not found. Run 'provider list' to see available providers.`,
+        );
       }
-      
+
       console.log(`Available models for provider '${providerId}':`);
-      
+
       // For now, provide common model lists for known providers
       const modelLists: Record<string, string[]> = {
-        'gemini': [
+        gemini: [
           'gemini-1.5-pro',
           'gemini-1.5-flash',
           'gemini-1.0-pro',
-          'gemini-1.0-pro-vision'
+          'gemini-1.0-pro-vision',
         ],
-        'openrouter': [
+        openrouter: [
           'openai/gpt-4',
           'openai/gpt-4o',
           'openai/gpt-3.5-turbo',
@@ -118,15 +124,11 @@ async function handleProviderCommand(argv: CliArgs) {
           'deepseek/deepseek-coder',
           'google/gemini-pro',
           'mistralai/mistral-7b-instruct:free',
-          'qwen/qwen-2-72b-instruct'
+          'qwen/qwen-2-72b-instruct',
         ],
-        'groq': [
-          'llama2-70b-4096',
-          'mixtral-8x7b-32768',
-          'gemma-7b-it'
-        ]
+        groq: ['llama2-70b-4096', 'mixtral-8x7b-32768', 'gemma-7b-it'],
       };
-      
+
       const models = modelLists[providerId];
       if (models) {
         models.forEach((model) => {
@@ -134,16 +136,20 @@ async function handleProviderCommand(argv: CliArgs) {
         });
       } else {
         console.log(`  Model list not available for provider '${providerId}'.`);
-        console.log('  Please check the provider documentation for available models.');
+        console.log(
+          '  Please check the provider documentation for available models.',
+        );
       }
       break;
     }
     case 'switch': {
       const providerId = argv.id;
       if (!providerId) {
-        throw new Error('Provider ID is required for switch command. Usage: provider switch <provider>');
+        throw new Error(
+          'Provider ID is required for switch command. Usage: provider switch <provider>',
+        );
       }
-      
+
       // Import the provider switcher
       const { providerSwitcher } = await import('@google/gemini-cli-core');
       await providerSwitcher.switchToPrimary(providerId);
@@ -157,9 +163,11 @@ async function handleProviderCommand(argv: CliArgs) {
     case 'enable': {
       const providerId = argv.id;
       if (!providerId) {
-        throw new Error('Provider ID is required for enable command. Usage: provider enable <provider>');
+        throw new Error(
+          'Provider ID is required for enable command. Usage: provider enable <provider>',
+        );
       }
-      
+
       const { providerSwitcher } = await import('@google/gemini-cli-core');
       await providerSwitcher.enableProvider(providerId);
       break;
@@ -167,9 +175,11 @@ async function handleProviderCommand(argv: CliArgs) {
     case 'disable': {
       const providerId = argv.id;
       if (!providerId) {
-        throw new Error('Provider ID is required for disable command. Usage: provider disable <provider>');
+        throw new Error(
+          'Provider ID is required for disable command. Usage: provider disable <provider>',
+        );
       }
-      
+
       const { providerSwitcher } = await import('@google/gemini-cli-core');
       await providerSwitcher.disableProvider(providerId);
       break;

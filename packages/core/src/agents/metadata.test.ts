@@ -213,7 +213,22 @@ describe('MetadataManager', () => {
 
   describe('metadata loading', () => {
     it('should load agent metadata from meta.md file', async () => {
-      const mockMetaContent = `---name: "Loaded Agent"description: "An agent loaded from metadata"personality: "Friendly"roles: ["helper"]skills: ["communication"]tools: ["chat"]enabled: truepriority: "medium"created: "2025-01-01T00:00:00.000Z"version: "1.0.0"tags: ["loaded"]metadata: {}---# Loaded Agent - MetadataThis is a test metadata file.`;
+      const mockMetaContent = `---
+name: "Loaded Agent"
+description: "An agent loaded from metadata"
+personality: "Friendly"
+roles: ["helper"]
+skills: ["communication"]
+tools: ["chat"]
+enabled: true
+priority: "medium"
+created: "2025-01-01T00:00:00.000Z"
+version: "1.0.0"
+tags: ["loaded"]
+metadata: {}
+---
+# Loaded Agent - Metadata
+This is a test metadata file.`;
 
       mockFs.readFile.mockResolvedValueOnce(mockMetaContent);
 
@@ -288,9 +303,17 @@ describe('MetadataManager', () => {
         { name: 'not-a-dir.txt', isDirectory: () => false },
       ];
 
-      const mockMetaContent1 = `---name: "Agent 1"description: "First agent"---Content 1`;
+      const mockMetaContent1 = `---
+name: "Agent 1"
+description: "First agent"
+---
+Content 1`;
 
-      const mockMetaContent2 = `---name: "Agent 2"description: "Second agent"---Content 2`;
+      const mockMetaContent2 = `---
+name: "Agent 2"
+description: "Second agent"
+---
+Content 2`;
 
       mockFs.readdir.mockResolvedValueOnce(mockDirEntries);
       mockFs.readFile
@@ -324,19 +347,57 @@ describe('MetadataManager', () => {
       const mockAgentDirEntries = [
         { name: 'test-agent', isDirectory: () => true },
       ];
-      const mockAgentContent = `---name: "Test Agent"description: "A test agent"roles: []skills: []tools: []enabled: truepriority: "medium"created: "2025-01-01T00:00:00.000Z"version: "1.0.0"tags: []metadata: {}---Content`;
+      const mockAgentContent = `---
+name: "Test Agent"
+description: "A test agent"
+roles: []
+skills: []
+tools: []
+enabled: true
+priority: "medium"
+created: "2025-01-01T00:00:00.000Z"
+version: "1.0.0"
+tags: []
+metadata: {}
+---
+Content`;
 
       // Mock role directory
       const mockRoleDirEntries = [
         { name: 'test-role', isDirectory: () => true },
       ];
-      const mockRoleContent = `---name: "Test Role"description: "A test role"responsibilities: []requiredSkills: []optionalSkills: []permissions: []restrictions: []priority: "medium"created: "2025-01-01T00:00:00.000Z"version: "1.0.0"tags: []---Content`;
+      const mockRoleContent = `---
+name: "Test Role"
+description: "A test role"
+responsibilities: []
+requiredSkills: []
+optionalSkills: []
+permissions: []
+restrictions: []
+priority: "medium"
+created: "2025-01-01T00:00:00.000Z"
+version: "1.0.0"
+tags: []
+---
+Content`;
 
       // Mock skill directory
       const mockSkillDirEntries = [
         { name: 'test-skill', isDirectory: () => true },
       ];
-      const mockSkillContent = `---name: "Test Skill"description: "A test skill"level: "beginner"prerequisites: []tools: []examples: []restrictions: []created: "2025-01-01T00:00:00.000Z"version: "1.0.0"tags: []---Content`;
+      const mockSkillContent = `---
+name: "Test Skill"
+description: "A test skill"
+level: "beginner"
+prerequisites: []
+tools: []
+examples: []
+restrictions: []
+created: "2025-01-01T00:00:00.000Z"
+version: "1.0.0"
+tags: []
+---
+Content`;
 
       mockFs.readdir
         .mockResolvedValueOnce(mockAgentDirEntries) // agents
@@ -360,7 +421,14 @@ describe('MetadataManager', () => {
 
   describe('frontmatter parsing', () => {
     it('should parse simple YAML frontmatter correctly', async () => {
-      const content = `---name: "Test"description: "A test item"enabled: truecount: 42list: ["item1", "item2"]---Body content here`;
+      const content = `---
+name: "Test"
+description: "A test item"
+enabled: true
+count: 42
+list: ["item1", "item2"]
+---
+Body content here`;
 
       // Call the private method through reflection for testing
       // @ts-expect-error Testing private method

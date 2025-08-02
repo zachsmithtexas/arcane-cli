@@ -18,7 +18,6 @@ import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import { Config } from '../config/config.js';
 import { getEffectiveModel } from './modelCheck.js';
 import { UserTierId } from '../code_assist/types.js';
-import { providerRouter } from './simpleProviderRouter.js';
 import { ProviderAwareContentGenerator } from './providerAwareContentGenerator.js';
 
 /**
@@ -141,7 +140,7 @@ export async function createContentGenerator(
 
     // The models object IS the ContentGenerator
     const originalGenerator = googleGenAI.models;
-    
+
     // Return provider-aware wrapper that can route to different providers
     return new ProviderAwareContentGenerator(originalGenerator, config.model);
   }

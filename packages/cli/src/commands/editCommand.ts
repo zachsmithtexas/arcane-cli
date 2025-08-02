@@ -398,7 +398,10 @@ function getEditableFields(
           description: 'Required prerequisites (JSON array)',
         },
         { name: 'allowedTools', description: 'Allowed tools (JSON array)' },
-        { name: 'restrictedTools', description: 'Restricted tools (JSON array)' },
+        {
+          name: 'restrictedTools',
+          description: 'Restricted tools (JSON array)',
+        },
         { name: 'examples', description: 'Usage examples (JSON array)' },
         {
           name: 'restrictions',

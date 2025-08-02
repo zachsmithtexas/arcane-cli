@@ -10,6 +10,7 @@ import {
   AuthType,
   createContentGeneratorConfig,
 } from './contentGenerator.js';
+import { ProviderAwareContentGenerator } from './providerAwareContentGenerator.js';
 import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js';
 import { GoogleGenAI } from '@google/genai';
 import { Config } from '../config/config.js';
@@ -58,7 +59,7 @@ describe('createContentGenerator', () => {
         },
       },
     });
-    expect(generator).toBe((mockGenerator as GoogleGenAI).models);
+    expect(generator).toBeInstanceOf(ProviderAwareContentGenerator);
   });
 });
 

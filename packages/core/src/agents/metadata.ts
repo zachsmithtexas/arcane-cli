@@ -746,8 +746,8 @@ ${
       try {
         result[key] = JSON.parse(value);
       } catch {
-        // If JSON parse fails, treat as string
-        result[key] = value.replace(/["']|["']$/g, '');
+        // If JSON parse fails, treat as string and remove quotes
+        result[key] = value.replace(/^["']|["']$/g, '');
       }
     }
 

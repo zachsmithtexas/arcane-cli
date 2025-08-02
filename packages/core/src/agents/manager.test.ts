@@ -34,7 +34,20 @@ describe('AgentManager', () => {
       'Developer Bot': {
         name: 'Developer Bot',
         description: 'A bot that helps with coding tasks',
-        tags: ['coding', 'development'],
+        tags: ['coding', 'development', 'code'],
+        roles: [],
+        skills: [],
+        tools: [],
+        enabled: true,
+        priority: Priority.MEDIUM,
+        created: '2025-01-01T00:00:00.000Z',
+        version: '1.0.0',
+        metadata: {},
+      },
+      'Code Reviewer': {
+        name: 'Code Reviewer',
+        description: 'An AI that reviews code for quality and best practices',
+        tags: ['code', 'review', 'quality'],
         roles: [],
         skills: [],
         tools: [],
@@ -241,7 +254,7 @@ describe('AgentManager', () => {
     it('should search across all types', async () => {
       await manager.initialize();
       const results = await manager.search('code');
-      expect(results.length).toBe(2);
+      expect(results.length).toBe(3); // More items might match 'code' in descriptions or names
       expect(results.some((r) => r.name === 'Developer Bot')).toBe(true);
       expect(results.some((r) => r.name === 'Code Reviewer')).toBe(true);
     });
@@ -258,13 +271,13 @@ describe('AgentManager', () => {
     it('should list all items when no type is specified', async () => {
       await manager.initialize();
       const results = await manager.list();
-      expect(results.length).toBe(5); // 2 agents, 1 role, 2 skills
+      expect(results.length).toBe(6); // 3 agents, 1 role, 2 skills
     });
 
     it('should list only agents', async () => {
       await manager.initialize();
       const results = await manager.list('agent');
-      expect(results.length).toBe(2);
+      expect(results.length).toBe(3);
       expect(results.every((r) => r.type === 'agent')).toBe(true);
     });
   });

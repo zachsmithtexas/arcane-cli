@@ -11,9 +11,31 @@ import {
   CountTokensParameters,
   EmbedContentResponse,
   EmbedContentParameters,
+  Content,
+  Part,
 } from '@google/genai';
 import { ContentGenerator } from './contentGenerator.js';
 import { providerRouter } from './simpleProviderRouter.js';
+
+interface OpenRouterMessage {
+  role: string;
+  content: string;
+}
+
+interface OpenRouterChoice {
+  message: {
+    content: string;
+  };
+}
+
+interface OpenRouterResponse {
+  choices: OpenRouterChoice[];
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
 
 /**
  * Provider-aware content generator that routes requests to appropriate providers
@@ -28,7 +50,7 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
   }
 
   async generateContent(
-    request: GenerateContentParameters
+    request: GenerateContentParameters,
   ): Promise<GenerateContentResponse> {
     // Check if we should use OpenRouter for this model
     if (providerRouter.shouldUseOpenRouter(this.currentModel)) {
@@ -40,7 +62,7 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
   }
 
   async generateContentStream(
-    request: GenerateContentParameters
+    request: GenerateContentParameters,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
     // For now, streaming is only supported through Gemini
     // OpenRouter streaming can be added later
@@ -56,16 +78,16 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
   }
 
   private async generateContentViaOpenRouter(
-    request: GenerateContentParameters
+    request: GenerateContentParameters,
   ): Promise<GenerateContentResponse> {
     try {
       // Convert Gemini format to OpenRouter format
       const messages = this.convertGeminiToOpenRouterFormat(request);
-      
+
       // Make OpenRouter API call
       const response = await providerRouter.makeOpenRouterRequest(
         this.currentModel,
-        messages
+        messages,
       );
 
       // Convert back to Gemini format
@@ -76,42 +98,44 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
     }
   }
 
-  private convertGeminiToOpenRouterFormat(request: GenerateContentParameters): any[] {
-    const messages: any[] = [];
+  private convertGeminiToOpenRouterFormat(
+    request: GenerateContentParameters,
+  ): OpenRouterMessage[] {
+    const messages: OpenRouterMessage[] = [];
 
     // Simple conversion - extract text content and create user message
     try {
       // Handle contents if present
       if (request.contents) {
-        const contentsArray = Array.isArray(request.contents) ? request.contents : [request.contents];
-        
+        const contentsArray = Array.isArray(request.contents)
+          ? request.contents
+          : [request.contents];
+
         for (const content of contentsArray) {
-          const contentAny = content as any;
+          const contentAny = content as Content;
           const role = contentAny.role === 'user' ? 'user' : 'assistant';
           let text = '';
-          
+
           // Extract text from parts
           if (contentAny.parts && Array.isArray(contentAny.parts)) {
             text = contentAny.parts
-              .map((part: any) => part.text || '')
+              .map((part: Part) => ('text' in part ? part.text : ''))
               .join(' ');
-          } else if (typeof content === 'string') {
-            text = content;
           }
-          
+
           if (text.trim()) {
             messages.push({
               role,
-              content: text.trim()
+              content: text.trim(),
             });
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Fallback: create a simple user message
       messages.push({
         role: 'user',
-        content: 'Hello'
+        content: 'Hello',
       });
     }
 
@@ -119,87 +143,94 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
     if (messages.length === 0) {
       messages.push({
         role: 'user',
-        content: 'Hello'
+        content: 'Hello',
       });
     }
 
     return messages;
   }
 
-  private convertOpenRouterToGeminiFormat(response: any): GenerateContentResponse {
+  private convertOpenRouterToGeminiFormat(
+    response: OpenRouterResponse,
+  ): GenerateContentResponse {
     const choice = response.choices?.[0];
     if (!choice) {
       throw new Error('Invalid OpenRouter response format');
     }
 
     // Create a response that matches the expected structure
-    const result: any = {
+    const result = {
       candidates: [
         {
           content: {
             parts: [{ text: choice.message.content }],
-            role: 'model'
+            role: 'model',
           },
           finishReason: 'STOP',
           index: 0,
-          safetyRatings: []
-        }
+          safetyRatings: [],
+        },
       ],
       promptFeedback: {
-        safetyRatings: []
+        safetyRatings: [],
       },
-      usageMetadata: response.usage ? {
-        promptTokenCount: response.usage.prompt_tokens || 0,
-        candidatesTokenCount: response.usage.completion_tokens || 0,
-        totalTokenCount: response.usage.total_tokens || 0
-      } : undefined
+      usageMetadata: response.usage
+        ? {
+            promptTokenCount: response.usage.prompt_tokens || 0,
+            candidatesTokenCount: response.usage.completion_tokens || 0,
+            totalTokenCount: response.usage.total_tokens || 0,
+          }
+        : undefined,
     };
 
-    // Add missing properties as getters to match GenerateContentResponse interface
-    Object.defineProperty(result, 'text', {
-      get: () => choice.message.content
-    });
-    
-    Object.defineProperty(result, 'data', {
-      get: () => result
-    });
-
-    return result as GenerateContentResponse;
+    return {
+      ...result,
+      text: () => choice.message.content,
+    } as unknown as GenerateContentResponse;
   }
 
-  async countTokens(request: CountTokensParameters): Promise<CountTokensResponse> {
+  async countTokens(
+    request: CountTokensParameters,
+  ): Promise<CountTokensResponse> {
     // For non-Gemini models, provide estimate
     if (providerRouter.shouldUseOpenRouter(this.currentModel)) {
       // Simple token estimation
       let totalText = '';
-      
+
       try {
         if (request.contents) {
-          const contentsArray = Array.isArray(request.contents) ? request.contents : [request.contents];
+          const contentsArray = Array.isArray(request.contents)
+            ? request.contents
+            : [request.contents];
           totalText = contentsArray
-            .map((content: any) => {
-              if (content.parts && Array.isArray(content.parts)) {
-                return content.parts.map((part: any) => part.text || '').join(' ');
+            .map((content) => {
+              const contentAny = content as Content;
+              if (contentAny.parts && Array.isArray(contentAny.parts)) {
+                return contentAny.parts
+                  .map((part) => ('text' in part ? part.text : ''))
+                  .join(' ');
               }
-              return typeof content === 'string' ? content : '';
+              return '';
             })
             .join(' ');
         }
-      } catch (error) {
+      } catch (_error) {
         totalText = 'estimated content';
       }
-      
+
       const estimatedTokens = Math.ceil(totalText.length / 4); // Rough estimate
-      
+
       return {
-        totalTokens: estimatedTokens
+        totalTokens: estimatedTokens,
       };
     }
 
     return this.geminiGenerator.countTokens(request);
   }
 
-  async embedContent(request: EmbedContentParameters): Promise<EmbedContentResponse> {
+  async embedContent(
+    request: EmbedContentParameters,
+  ): Promise<EmbedContentResponse> {
     // Embeddings only supported through Gemini for now
     return this.geminiGenerator.embedContent(request);
   }

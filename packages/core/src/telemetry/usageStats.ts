@@ -497,30 +497,36 @@ export class UsageStatsManager {
   private async loadStats(): Promise<void> {
     try {
       const data = await fs.readFile(this.statsFilePath, 'utf-8');
-      
+
       // Handle empty or whitespace-only files
       if (!data.trim()) {
         this.initializeDefaultStats();
         return;
       }
-      
+
       const parsed = JSON.parse(data);
       this.stats = UsageStatsSchema.parse(parsed);
-    } catch (error) {
+    } catch (error: unknown) {
       const errorCode = (error as { code?: string }).code;
-      
+
       if (errorCode !== 'ENOENT') {
-        console.warn('Failed to load usage stats:', error instanceof Error ? error.message : error);
-        
+        console.warn(
+          'Failed to load usage stats:',
+          error instanceof Error ? error.message : error,
+        );
+
         // If it's a JSON parse error or validation error, reset to defaults
-        if (error instanceof SyntaxError || (error as any).name === 'ZodError') {
+        if (
+          error instanceof SyntaxError ||
+          (error as { name?: string }).name === 'ZodError'
+        ) {
           console.warn('Usage stats file corrupted, resetting to defaults');
           this.initializeDefaultStats();
           await this.saveStats(); // Save clean defaults
           return;
         }
       }
-      
+
       // File doesn't exist or other error, use defaults
       this.initializeDefaultStats();
     }

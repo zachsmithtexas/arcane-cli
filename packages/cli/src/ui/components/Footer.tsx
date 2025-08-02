@@ -100,7 +100,10 @@ export const Footer: React.FC<FooterProps> = ({
         <Text color={Colors.AccentBlue}>
           {' '}
           {model}{' '}
-          {(model.includes('/') || model.startsWith('deepseek') || model.startsWith('openai') || model.startsWith('anthropic')) && (
+          {(model.includes('/') ||
+            model.startsWith('deepseek') ||
+            model.startsWith('openai') ||
+            model.startsWith('anthropic')) && (
             <Text color={Colors.AccentPurple}>via OpenRouter </Text>
           )}
           <Text color={Colors.Gray}>

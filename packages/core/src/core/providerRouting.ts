@@ -19,8 +19,8 @@ export function shouldUseOpenRouter(model: string): boolean {
     'mistralai/',
     'google/gemini-pro', // Non-Gemini API version
   ];
-  
-  return openRouterModels.some(prefix => model.startsWith(prefix));
+
+  return openRouterModels.some((prefix) => model.startsWith(prefix));
 }
 
 export function getProviderForModel(model: string): 'gemini' | 'openrouter' {

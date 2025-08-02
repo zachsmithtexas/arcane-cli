@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { darkTheme, Theme } from './theme.js';
+import { Theme } from './theme.js';
 
 const arcaneColors = {
   type: 'dark' as const,

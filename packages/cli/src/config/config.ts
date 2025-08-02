@@ -101,7 +101,8 @@ export async function parseArguments(): Promise<CliArgs> {
       alias: 'm',
       type: 'string',
       description: `Model`,
-      default: process.env.GEMINI_MODEL || process.env.MODEL || DEFAULT_GEMINI_MODEL,
+      default:
+        process.env.GEMINI_MODEL || process.env.MODEL || DEFAULT_GEMINI_MODEL,
     })
     .option('prompt', {
       alias: 'p',
@@ -341,77 +342,91 @@ export async function parseArguments(): Promise<CliArgs> {
           });
       },
     )
-    .command('provider <action> [id]', 'Manage provider configurations', (yargs) => {
-      yargs
-        .positional('action', {
-          describe: 'The action to perform',
-          type: 'string',
-          choices: ['list', 'switch', 'add', 'enable', 'disable', 'status', 'keys', 'stats', 'list-models'],
-        })
-        .positional('id', {
-          describe: 'The provider ID',
-          type: 'string',
-        })
-        .option('api-key', {
-          type: 'string',
-          description: 'The API key for the provider',
-        })
-        .command(
-          'keys <subcommand>',
-          'Manage API keys for providers',
-          (yargs) => {
-            yargs
-              .positional('subcommand', {
-                describe: 'Key management action',
-                type: 'string',
-                choices: ['list', 'add', 'set', 'status', 'stats'],
-              })
-              .option('provider', {
-                type: 'string',
-                description: 'Provider ID for key operations',
-                alias: 'p',
-              })
-              .option('key', {
-                type: 'string',
-                description: 'API key to add or set',
-                alias: 'k',
-              })
-              .option('status', {
-                type: 'boolean',
-                description: 'Show detailed status information',
-                default: false,
-              });
-          },
-        )
-        .command(
-          'stats <subcommand>',
-          'View usage statistics and analytics',
-          (yargs) => {
-            yargs
-              .positional('subcommand', {
-                describe: 'Statistics action',
-                type: 'string',
-                choices: [
-                  'summary',
-                  'providers',
-                  'commands',
-                  'sessions',
-                  'export',
-                  'clear',
-                ],
-              })
-              .option('export', {
-                type: 'string',
-                description: 'Export statistics to file path',
-              })
-              .option('clear', {
-                type: 'boolean',
-                description: 'Clear all usage statistics',
-                default: false,
-              });
-          },
-        );
-    });
+    .command(
+      'provider <action> [id]',
+      'Manage provider configurations',
+      (yargs) => {
+        yargs
+          .positional('action', {
+            describe: 'The action to perform',
+            type: 'string',
+            choices: [
+              'list',
+              'switch',
+              'add',
+              'enable',
+              'disable',
+              'status',
+              'keys',
+              'stats',
+              'list-models',
+            ],
+          })
+          .positional('id', {
+            describe: 'The provider ID',
+            type: 'string',
+          })
+          .option('api-key', {
+            type: 'string',
+            description: 'The API key for the provider',
+          })
+          .command(
+            'keys <subcommand>',
+            'Manage API keys for providers',
+            (yargs) => {
+              yargs
+                .positional('subcommand', {
+                  describe: 'Key management action',
+                  type: 'string',
+                  choices: ['list', 'add', 'set', 'status', 'stats'],
+                })
+                .option('provider', {
+                  type: 'string',
+                  description: 'Provider ID for key operations',
+                  alias: 'p',
+                })
+                .option('key', {
+                  type: 'string',
+                  description: 'API key to add or set',
+                  alias: 'k',
+                })
+                .option('status', {
+                  type: 'boolean',
+                  description: 'Show detailed status information',
+                  default: false,
+                });
+            },
+          )
+          .command(
+            'stats <subcommand>',
+            'View usage statistics and analytics',
+            (yargs) => {
+              yargs
+                .positional('subcommand', {
+                  describe: 'Statistics action',
+                  type: 'string',
+                  choices: [
+                    'summary',
+                    'providers',
+                    'commands',
+                    'sessions',
+                    'export',
+                    'clear',
+                  ],
+                })
+                .option('export', {
+                  type: 'string',
+                  description: 'Export statistics to file path',
+                })
+                .option('clear', {
+                  type: 'boolean',
+                  description: 'Clear all usage statistics',
+                  default: false,
+                });
+            },
+          );
+      },
+    );
 
   yargsInstance.wrap(yargsInstance.terminalWidth());
   const result = yargsInstance.parseSync();
