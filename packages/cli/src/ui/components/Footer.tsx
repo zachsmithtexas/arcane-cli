@@ -95,11 +95,14 @@ export const Footer: React.FC<FooterProps> = ({
         )}
       </Box>
 
-      {/* Right Section: Gemini Label and Console Summary */}
+      {/* Right Section: Model/Provider Label and Console Summary */}
       <Box alignItems="center">
         <Text color={Colors.AccentBlue}>
           {' '}
           {model}{' '}
+          {(model.includes('/') || model.startsWith('deepseek') || model.startsWith('openai') || model.startsWith('anthropic')) && (
+            <Text color={Colors.AccentPurple}>via OpenRouter </Text>
+          )}
           <Text color={Colors.Gray}>
             ({((1 - percentage) * 100).toFixed(0)}% context left)
           </Text>

@@ -138,16 +138,40 @@ async function handleProviderCommand(argv: CliArgs) {
       }
       break;
     }
-    case 'set': {
+    case 'switch': {
       const providerId = argv.id;
       if (!providerId) {
-        throw new Error('Provider ID is required to set the active provider.');
+        throw new Error('Provider ID is required for switch command. Usage: provider switch <provider>');
       }
-      config.fallbackOrder = [
-        providerId,
-        ...(config.fallbackOrder?.filter((p: string) => p !== providerId) || []),
-      ];
-      console.log(`Set '${providerId}' as primary provider.`);
+      
+      // Import the provider switcher
+      const { providerSwitcher } = await import('@google/gemini-cli-core');
+      await providerSwitcher.switchToPrimary(providerId);
+      break;
+    }
+    case 'status': {
+      const { providerSwitcher } = await import('@google/gemini-cli-core');
+      await providerSwitcher.showStatus();
+      break;
+    }
+    case 'enable': {
+      const providerId = argv.id;
+      if (!providerId) {
+        throw new Error('Provider ID is required for enable command. Usage: provider enable <provider>');
+      }
+      
+      const { providerSwitcher } = await import('@google/gemini-cli-core');
+      await providerSwitcher.enableProvider(providerId);
+      break;
+    }
+    case 'disable': {
+      const providerId = argv.id;
+      if (!providerId) {
+        throw new Error('Provider ID is required for disable command. Usage: provider disable <provider>');
+      }
+      
+      const { providerSwitcher } = await import('@google/gemini-cli-core');
+      await providerSwitcher.disableProvider(providerId);
       break;
     }
     case 'add': {
@@ -193,8 +217,10 @@ async function handleProviderCommand(argv: CliArgs) {
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
   if (
     argv.action === 'list' ||
-    argv.action === 'set' ||
-    argv.action === 'add'
+    argv.action === 'switch' ||
+    argv.action === 'add' ||
+    argv.action === 'enable' ||
+    argv.action === 'disable'
   ) {
     console.log('Provider configuration updated.');
   }

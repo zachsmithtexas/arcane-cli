@@ -67,6 +67,8 @@ export class SimpleProviderRouter {
       throw new Error('OpenRouter API key not configured. Run: ./arcane provider add openrouter --api-key YOUR_KEY');
     }
 
+    console.log(`🔀 Routing ${model} to OpenRouter...`);
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {

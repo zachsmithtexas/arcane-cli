@@ -346,7 +346,7 @@ export async function parseArguments(): Promise<CliArgs> {
         .positional('action', {
           describe: 'The action to perform',
           type: 'string',
-          choices: ['list', 'set', 'add', 'keys', 'stats', 'list-models'],
+          choices: ['list', 'switch', 'add', 'enable', 'disable', 'status', 'keys', 'stats', 'list-models'],
         })
         .positional('id', {
           describe: 'The provider ID',
