@@ -70,7 +70,7 @@ export interface CliArgs {
   status: boolean | undefined; // For showing key status
   export: string | undefined; // For exporting stats
   clear: boolean | undefined; // For clearing stats
-  provider: string | undefined; // For provider operations
+  provider: string | undefined; // For provider operations/commands
   key: string | undefined; // For key operations
   // Generate command options
   type: 'agent' | 'role' | 'skill' | undefined; // For generate command
@@ -341,16 +341,20 @@ export async function parseArguments(): Promise<CliArgs> {
           });
       },
     )
-    .command('provider <action>', 'Manage provider configurations', (yargs) => {
+    .command('provider <action> [provider]', 'Manage provider configurations', (yargs) => {
       yargs
         .positional('action', {
           describe: 'The action to perform',
           type: 'string',
-          choices: ['list', 'set', 'add', 'keys', 'stats'],
+          choices: ['list', 'set', 'add', 'keys', 'stats', 'list-models'],
+        })
+        .positional('provider', {
+          describe: 'The provider ID (required for list-models)',
+          type: 'string',
         })
         .option('id', {
           type: 'string',
-          description: 'The ID of the provider',
+          description: 'The ID of the provider (alternative to provider positional)',
         })
         .option('api-key', {
           type: 'string',

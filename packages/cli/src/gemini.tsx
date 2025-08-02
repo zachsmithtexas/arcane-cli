@@ -65,49 +65,99 @@ async function handleProviderCommand(argv: CliArgs) {
   switch (argv.action) {
     case 'list': {
       console.log('Available providers:');
-      config.providers.forEach((provider: ProviderConfig, index: number) => {
-        const keyCount = provider.apiKeys
-          ? provider.apiKeys.length
-          : provider.apiKey
-            ? 1
-            : 0;
-        const status = provider.enabled ? '✅ enabled' : '❌ disabled';
-        console.log(
-          `  ${index + 1}. ${provider.id} (${keyCount} keys) - ${status}`,
-        );
-      });
+      if (config.providers.length === 0) {
+        console.log('  No providers configured.');
+      } else {
+        config.providers.forEach((provider: ProviderConfig) => {
+          const keyCount = provider.apiKeys
+            ? provider.apiKeys.length
+            : provider.apiKey
+              ? 1
+              : 0;
+          const status = provider.enabled ? '✅ enabled' : '❌ disabled';
+          console.log(`  - ${provider.id} (${keyCount} keys) - ${status}`);
+        });
+      }
       if (config.fallbackOrder && config.fallbackOrder.length > 0) {
         console.log('Fallback order:', config.fallbackOrder.join(' → '));
       }
       break;
     }
+    case 'list-models': {
+      const providerId = argv.provider || argv.id;
+      if (!providerId) {
+        throw new Error('Provider ID is required for list-models command. Usage: provider list-models <provider>');
+      }
+      
+      const provider = config.providers.find((p: ProviderConfig) => p.id === providerId);
+      if (!provider) {
+        throw new Error(`Provider '${providerId}' not found. Run 'provider list' to see available providers.`);
+      }
+      
+      console.log(`Available models for provider '${providerId}':`);
+      
+      // For now, provide common model lists for known providers
+      const modelLists: Record<string, string[]> = {
+        'gemini': [
+          'gemini-1.5-pro',
+          'gemini-1.5-flash',
+          'gemini-1.0-pro',
+          'gemini-1.0-pro-vision'
+        ],
+        'openrouter': [
+          'openai/gpt-4',
+          'openai/gpt-3.5-turbo',
+          'anthropic/claude-3-opus',
+          'anthropic/claude-3-sonnet',
+          'meta-llama/llama-2-70b-chat'
+        ],
+        'groq': [
+          'llama2-70b-4096',
+          'mixtral-8x7b-32768',
+          'gemma-7b-it'
+        ]
+      };
+      
+      const models = modelLists[providerId];
+      if (models) {
+        models.forEach((model) => {
+          console.log(`  - ${model}`);
+        });
+      } else {
+        console.log(`  Model list not available for provider '${providerId}'.`);
+        console.log('  Please check the provider documentation for available models.');
+      }
+      break;
+    }
     case 'set': {
-      if (!argv.id) {
+      const providerId = argv.provider || argv.id;
+      if (!providerId) {
         throw new Error('Provider ID is required to set the active provider.');
       }
       config.fallbackOrder = [
-        argv.id,
-        ...(config.fallbackOrder?.filter((p: string) => p !== argv.id) || []),
+        providerId,
+        ...(config.fallbackOrder?.filter((p: string) => p !== providerId) || []),
       ];
-      console.log(`Set '${argv.id}' as primary provider.`);
+      console.log(`Set '${providerId}' as primary provider.`);
       break;
     }
     case 'add': {
-      if (!argv.id) {
+      const providerId = argv.provider || argv.id;
+      if (!providerId) {
         throw new Error('Provider ID is required to add a new provider.');
       }
 
       const existingProvider = config.providers.find(
-        (p: ProviderConfig) => p.id === argv.id,
+        (p: ProviderConfig) => p.id === providerId,
       );
       if (existingProvider) {
         throw new Error(
-          `Provider '${argv.id}' already exists. Use 'keys add' to add more API keys.`,
+          `Provider '${providerId}' already exists. Use 'keys add' to add more API keys.`,
         );
       }
 
       const newProvider: ProviderConfig = {
-        id: argv.id,
+        id: providerId,
         enabled: true,
         apiKeys: [],
       };
@@ -117,7 +167,7 @@ async function handleProviderCommand(argv: CliArgs) {
       }
 
       config.providers.push(newProvider);
-      console.log(`Added provider '${argv.id}'.`);
+      console.log(`Added provider '${providerId}'.`);
       break;
     }
     case 'stats': {
@@ -126,7 +176,7 @@ async function handleProviderCommand(argv: CliArgs) {
     }
     default:
       console.log(
-        'Invalid provider command. Available commands: list, set, add, keys, stats',
+        'Invalid provider command. Available commands: list, list-models, set, add, keys, stats',
       );
       return;
   }
