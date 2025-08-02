@@ -53,6 +53,7 @@ export class SimpleProviderRouter {
   shouldUseOpenRouter(model: string): boolean {
     // Check if model name suggests OpenRouter
     const openRouterPrefixes = [
+      'openrouter/',
       'deepseek/',
       'openai/',
       'anthropic/',
@@ -94,11 +95,19 @@ export class SimpleProviderRouter {
       );
     }
 
+    let effectiveModel = model;
+    if (model === 'openrouter/auto') {
+      effectiveModel = 'deepseek/deepseek-r1:free';
+      console.log(
+        `INFO: 'openrouter/auto' resolved to '${effectiveModel}'. Use '/provider list' to see all options.`,
+      );
+    }
+
     console.log(`🔀 Routing ${model} to OpenRouter...`);
     console.log('Using OpenRouter API Key:', apiKey);
 
     const body = {
-      model,
+      model: effectiveModel,
       messages,
       temperature: 0.7,
       max_tokens: 4000,
