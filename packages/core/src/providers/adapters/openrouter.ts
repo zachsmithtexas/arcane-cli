@@ -59,3 +59,6 @@ export class OpenRouterAdapter implements ProviderAdapter {
     return data.choices[0].message.content;
   }
 }
+
+// Export as default for the loader
+export default OpenRouterAdapter;
