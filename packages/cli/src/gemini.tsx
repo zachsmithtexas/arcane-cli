@@ -444,13 +444,13 @@ export async function main() {
   const argv = await parseArguments();
   if (argv._[0] === 'edit') {
     // Track edit command usage
-    let startTime = Date.now();
+    const startTime = Date.now();
     try {
       const { handleEditCommand } = await import('./commands/editCommand.js');
       const { getUsageStatsManager } = await import('@google/gemini-cli-core');
       const usageStats = getUsageStatsManager();
       const commandName = `edit ${argv.type}`;
-      
+
       await handleEditCommand({
         type: argv.type!,
         name: argv.name!,
@@ -460,12 +460,14 @@ export async function main() {
         value: argv.value,
         validate: argv.validate,
       });
-      
+
       const executionTime = Date.now() - startTime;
       await usageStats.recordCommand(commandName, executionTime, true);
     } catch (error) {
       try {
-        const { getUsageStatsManager } = await import('@google/gemini-cli-core');
+        const { getUsageStatsManager } = await import(
+          '@google/gemini-cli-core'
+        );
         const usageStats = getUsageStatsManager();
         const commandName = `edit ${argv.type}`;
         const executionTime = Date.now() - startTime;

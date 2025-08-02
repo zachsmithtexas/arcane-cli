@@ -147,8 +147,9 @@ export class AgentManager {
         (template.additionalFields?.requiredSkills as string[]) || [],
       optionalSkills:
         (template.additionalFields?.optionalSkills as string[]) || [],
-      permissions: (template.additionalFields?.permissions as string[]) || [],
-      restrictions: (template.additionalFields?.restrictions as string[]) || [],
+      allowedTools: (template.additionalFields?.allowedTools as string[]) || [],
+      restrictedTools:
+        (template.additionalFields?.restrictedTools as string[]) || [],
       priority:
         (template.additionalFields?.priority as Priority) || Priority.MEDIUM,
       created: new Date().toISOString(),
@@ -197,9 +198,10 @@ export class AgentManager {
         template.additionalFields?.category) as string,
       prerequisites:
         (template.additionalFields?.prerequisites as string[]) || [],
-      tools: (template.additionalFields?.tools as string[]) || [],
+      allowedTools: (template.additionalFields?.allowedTools as string[]) || [],
+      restrictedTools:
+        (template.additionalFields?.restrictedTools as string[]) || [],
       examples: (template.additionalFields?.examples as string[]) || [],
-      restrictions: (template.additionalFields?.restrictions as string[]) || [],
       created: new Date().toISOString(),
       version: '1.0.0',
       tags: template.tags || [],
@@ -254,15 +256,14 @@ export class AgentManager {
     const agentFiles = await this.metadataManager.listMetadataFiles('agents');
     const roleFiles = await this.metadataManager.listMetadataFiles('roles');
     const skillFiles = await this.metadataManager.listMetadataFiles('skills');
+    const queryLower = query.toLowerCase();
 
     // Search agents
     if (!type || type === 'agent') {
       for (const agent of Object.values(this.ecosystem.agents)) {
-        const score = this.fuzzyMatch(
-          query,
-          `${agent.name} ${agent.description} ${agent.tags.join(' ')}`,
-        );
-        if (score > 0) {
+        const searchText =
+          `${agent.name} ${agent.description} ${agent.tags.join(' ')}`.toLowerCase();
+        if (searchText.includes(queryLower)) {
           const file = agentFiles.find(
             (f) => f.frontmatter.name === agent.name,
           );
@@ -270,7 +271,7 @@ export class AgentManager {
             type: 'agent',
             name: agent.name,
             description: agent.description,
-            score,
+            score: 1,
             path: file?.path || '',
           });
         }
@@ -280,17 +281,15 @@ export class AgentManager {
     // Search roles
     if (!type || type === 'role') {
       for (const role of Object.values(this.ecosystem.roles)) {
-        const score = this.fuzzyMatch(
-          query,
-          `${role.name} ${role.description} ${role.tags.join(' ')}`,
-        );
-        if (score > 0) {
+        const searchText =
+          `${role.name} ${role.description} ${role.tags.join(' ')}`.toLowerCase();
+        if (searchText.includes(queryLower)) {
           const file = roleFiles.find((f) => f.frontmatter.name === role.name);
           results.push({
             type: 'role',
             name: role.name,
             description: role.description,
-            score,
+            score: 1,
             path: file?.path || '',
           });
         }
@@ -300,11 +299,9 @@ export class AgentManager {
     // Search skills
     if (!type || type === 'skill') {
       for (const skill of Object.values(this.ecosystem.skills)) {
-        const score = this.fuzzyMatch(
-          query,
-          `${skill.name} ${skill.description} ${skill.category || ''} ${skill.tags.join(' ')}`,
-        );
-        if (score > 0) {
+        const searchText =
+          `${skill.name} ${skill.description} ${skill.category || ''} ${skill.tags.join(' ')}`.toLowerCase();
+        if (searchText.includes(queryLower)) {
           const file = skillFiles.find(
             (f) => f.frontmatter.name === skill.name,
           );
@@ -312,14 +309,14 @@ export class AgentManager {
             type: 'skill',
             name: skill.name,
             description: skill.description,
-            score,
+            score: 1,
             path: file?.path || '',
           });
         }
       }
     }
 
-    return results.sort((a, b) => b.score - a.score);
+    return results.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**
@@ -419,6 +416,50 @@ export class AgentManager {
     // Fall back to ecosystem
     if (!this.ecosystem) await this.loadEcosystemFromFiles();
     return this.ecosystem?.skills[name] || null;
+  }
+
+  /**
+   * Gets the dynamic capabilities of an agent based on its roles and skills.
+   */
+  async getAgentCapabilities(agentName: string): Promise<string[]> {
+    const agent = await this.getAgent(agentName);
+    if (!agent) {
+      return [];
+    }
+
+    const allowedTools = new Set<string>(agent.tools || []);
+    const restrictedTools = new Set<string>();
+
+    // Process roles
+    if (agent.roles) {
+      for (const roleName of agent.roles) {
+        const role = await this.getRole(roleName);
+        if (role) {
+          (role.allowedTools || []).forEach((tool) => allowedTools.add(tool));
+          (role.restrictedTools || []).forEach((tool) =>
+            restrictedTools.add(tool),
+          );
+        }
+      }
+    }
+
+    // Process skills
+    if (agent.skills) {
+      for (const skillName of agent.skills) {
+        const skill = await this.getSkill(skillName);
+        if (skill) {
+          (skill.allowedTools || []).forEach((tool) => allowedTools.add(tool));
+          (skill.restrictedTools || []).forEach((tool) =>
+            restrictedTools.add(tool),
+          );
+        }
+      }
+    }
+
+    // Remove restricted tools from allowed tools
+    restrictedTools.forEach((tool) => allowedTools.delete(tool));
+
+    return Array.from(allowedTools);
   }
 
   /**
@@ -539,41 +580,6 @@ export class AgentManager {
         // Directory might already exist
       }
     }
-  }
-
-  private fuzzyMatch(query: string, text: string): number {
-    const queryLower = query.toLowerCase();
-    const textLower = text.toLowerCase();
-
-    if (textLower.includes(queryLower)) {
-      return 1.0;
-    }
-
-    const words = queryLower.split(' ').filter((w) => w.length > 0);
-    let matchedWords = 0;
-
-    for (const word of words) {
-      if (textLower.includes(word)) {
-        matchedWords++;
-      }
-    }
-
-    if (matchedWords > 0) {
-      return (matchedWords / words.length) * 0.8;
-    }
-
-    let score = 0;
-    let lastIndex = -1;
-
-    for (const char of queryLower) {
-      const index = textLower.indexOf(char, lastIndex + 1);
-      if (index > lastIndex) {
-        score += 1;
-        lastIndex = index;
-      }
-    }
-
-    return score > 0 ? (score / queryLower.length) * 0.6 : 0;
   }
 }
 

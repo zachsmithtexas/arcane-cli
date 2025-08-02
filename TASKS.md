@@ -1,5 +1,28 @@
 # Arcane CLI – Project Task Breakdown
 
+## 0. Branding & UI
+
+- [ ] **Arcane-Branded Home UI with Custom ASCII Art:**  
+      Replace the default home/landing page branding (previously >GEMINI) with Arcane’s own branding and the following ASCII art, formatted as shown below.  
+      _Criteria:_ ASCII art appears exactly as below, with theming/color palette to match Arcane’s brand.  
+      _File:_ `/core/ui.js` (or main CLI entry)
+
+      ```
+      ⠀⠀⠀⠀⠀⡰⠀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠀⠀⠀⠘⣶⣄⠀⠀⠀⠀⠀
+      ⠀⠠⢴⡦⠄⢠⣿⣟⡂⠀⠀⠀⠀
+      ⠀⠀⠈⠉⢀⣾⣿⣿⣷⠀⠀⠀⠀
+      ⠀⠀⠀⣠⡼⣯⣽⣿⣿⣵⢄⠀⠀
+      ⠀⠀⠀⠀⠀⢻⠛⠛⠏⠀⢁⣠⣀
+      ⠀⠀⠀⢰⣿⡀⠀⠀⠈⣿⡔⠚⠀
+      ⣠⡀⠀⣿⣿⢀⡀⠀⣿⣿⣷⠀⠀
+      ⠈⠀⢸⣿⣿⣿⡄⢠⣿⣿⣿⡆⠀
+      ⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠀
+      ⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡆
+      ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+      ```
+---
+
 ## 1. Provider Modularity & API Management
 
 - [x] **Implement Provider Plugin Loader (`/core/providers/`):**  
@@ -189,5 +212,3 @@
        Support auto-download and extraction for research zips or agent files.  
        _Criteria:_ CLI command downloads and extracts, handles file collisions.  
        _File:_ `/core/download.js`
-
-> Copy/paste this into your Obsidian vault or GitHub Project for atomic task management.

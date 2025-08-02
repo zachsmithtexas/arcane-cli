@@ -44,9 +44,9 @@ export const SkillSchema = z.object({
   level: z.nativeEnum(SkillLevel),
   category: z.string().optional(),
   prerequisites: z.array(z.string()).default([]),
-  tools: z.array(z.string()).default([]),
+  allowedTools: z.array(z.string()).default([]),
+  restrictedTools: z.array(z.string()).default([]),
   examples: z.array(z.string()).default([]),
-  restrictions: z.array(z.string()).default([]),
   created: z.string(), // ISO date
   updated: z.string().optional(), // ISO date
   version: z.string().default('1.0.0'),
@@ -64,8 +64,8 @@ export const RoleSchema = z.object({
   responsibilities: z.array(z.string()).default([]),
   requiredSkills: z.array(z.string()).default([]),
   optionalSkills: z.array(z.string()).default([]),
-  permissions: z.array(z.string()).default([]),
-  restrictions: z.array(z.string()).default([]),
+  allowedTools: z.array(z.string()).default([]),
+  restrictedTools: z.array(z.string()).default([]),
   priority: z.nativeEnum(Priority).default(Priority.MEDIUM),
   created: z.string(), // ISO date
   updated: z.string().optional(), // ISO date

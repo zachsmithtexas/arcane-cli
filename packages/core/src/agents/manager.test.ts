@@ -66,8 +66,8 @@ describe('AgentManager', () => {
         responsibilities: [],
         requiredSkills: [],
         optionalSkills: [],
-        permissions: [],
-        restrictions: [],
+        allowedTools: [],
+        restrictedTools: [],
         priority: Priority.MEDIUM,
         created: '2025-01-01T00:00:00.000Z',
         version: '1.0.0',
@@ -81,9 +81,22 @@ describe('AgentManager', () => {
         tags: ['programming', 'web'],
         level: SkillLevel.INTERMEDIATE,
         prerequisites: [],
-        tools: [],
+        allowedTools: [],
+        restrictedTools: [],
         examples: [],
-        restrictions: [],
+        created: '2025-01-01T00:00:00.000Z',
+        version: '1.0.0',
+      },
+      Python: {
+        name: 'Python',
+        description: 'Programming in Python language for data science',
+        category: 'Programming',
+        tags: ['programming', 'data'],
+        level: SkillLevel.ADVANCED,
+        prerequisites: [],
+        allowedTools: [],
+        restrictedTools: [],
+        examples: [],
         created: '2025-01-01T00:00:00.000Z',
         version: '1.0.0',
       },
@@ -125,7 +138,11 @@ describe('AgentManager', () => {
               agent.name.toLowerCase().replace(/\s+/g, '-'),
               'meta.md',
             ),
-            frontmatter: { name: agent.name },
+            frontmatter: {
+              name: agent.name,
+              description: agent.description,
+              tags: agent.tags,
+            },
             content: '',
             lastModified: new Date().toISOString(),
           }));
@@ -138,7 +155,11 @@ describe('AgentManager', () => {
               role.name.toLowerCase().replace(/\s+/g, '-'),
               'meta.md',
             ),
-            frontmatter: { name: role.name },
+            frontmatter: {
+              name: role.name,
+              description: role.description,
+              tags: role.tags,
+            },
             content: '',
             lastModified: new Date().toISOString(),
           }));
@@ -151,7 +172,12 @@ describe('AgentManager', () => {
               skill.name.toLowerCase().replace(/\s+/g, '-'),
               'meta.md',
             ),
-            frontmatter: { name: skill.name },
+            frontmatter: {
+              name: skill.name,
+              description: skill.description,
+              tags: skill.tags,
+              category: skill.category,
+            },
             content: '',
             lastModified: new Date().toISOString(),
           }));
@@ -232,7 +258,7 @@ describe('AgentManager', () => {
     it('should list all items when no type is specified', async () => {
       await manager.initialize();
       const results = await manager.list();
-      expect(results.length).toBe(4); // 2 agents, 1 role, 1 skill
+      expect(results.length).toBe(5); // 2 agents, 1 role, 2 skills
     });
 
     it('should list only agents', async () => {

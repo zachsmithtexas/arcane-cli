@@ -287,7 +287,7 @@ export async function parseArguments(): Promise<CliArgs> {
             description: 'Validate metadata after editing',
             default: true,
           });
-      }
+      },
     )
     .command(
       'generate <type>',

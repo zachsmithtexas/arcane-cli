@@ -311,7 +311,7 @@ ${agent.description}
 - Edit this file to update agent metadata
 - Changes will be reflected when the agent is reloaded
 - Ensure all required fields are present and valid
-- Use the CLI command \`gemini edit agent "${agent.name}"\` for guided editing
+- Use the CLI command 'gemini edit agent "${agent.name}"' for guided editing
 
 ## Metadata Fields
 - **name**: Unique identifier for the agent
@@ -357,7 +357,7 @@ ${role.description}
 - Edit this file to update role metadata
 - Changes will be reflected when agents using this role are reloaded
 - Ensure all required fields are present and valid
-- Use the CLI command \`gemini edit role "${role.name}"\` for guided editing
+- Use the CLI command 'gemini edit role "${role.name}"' for guided editing
 
 ## Metadata Fields
 - **name**: Unique identifier for the role
@@ -365,8 +365,8 @@ ${role.description}
 - **responsibilities**: List of role responsibilities
 - **requiredSkills**: Skills that are required for this role
 - **optionalSkills**: Skills that are beneficial but not required
-- **permissions**: List of permissions granted by this role
-- **restrictions**: List of restrictions imposed by this role
+- **allowedTools**: List of tools/commands this role is allowed to use
+- **restrictedTools**: List of tools/commands this role is explicitly forbidden from using
 - **priority**: Role priority level
 - **tags**: Searchable tags for organization
 
@@ -397,7 +397,7 @@ ${skill.description}
 - Edit this file to update skill metadata
 - Changes will be reflected when agents using this skill are reloaded
 - Ensure all required fields are present and valid
-- Use the CLI command \`gemini edit skill "${skill.name}"\` for guided editing
+- Use the CLI command 'gemini edit skill "${skill.name}"' for guided editing
 
 ## Metadata Fields
 - **name**: Unique identifier for the skill
@@ -405,9 +405,9 @@ ${skill.description}
 - **level**: Skill difficulty level (beginner/intermediate/advanced/expert)
 - **category**: Skill category for organization
 - **prerequisites**: Skills required before learning this skill
-- **tools**: Tools needed to use this skill
+- **allowedTools**: Tools/commands granted by this skill
+- **restrictedTools**: Tools/commands explicitly forbidden by this skill
 - **examples**: Usage examples and use cases
-- **restrictions**: Limitations or restrictions on skill usage
 - **tags**: Searchable tags for organization
 
 ---
@@ -483,17 +483,17 @@ ${
     : 'No responsibilities defined.'
 }
 
-## Permissions
+## Allowed Tools
 ${
-  role.permissions.length > 0
-    ? role.permissions.map((perm) => `- ${perm}`).join('\n')
+  role.allowedTools.length > 0
+    ? role.allowedTools.map((perm) => `- ${perm}`).join('\n')
     : 'No specific permissions.'
 }
 
-## Restrictions
+## Restricted Tools
 ${
-  role.restrictions.length > 0
-    ? role.restrictions.map((rest) => `- ${rest}`).join('\n')
+  role.restrictedTools.length > 0
+    ? role.restrictedTools.map((rest) => `- ${rest}`).join('\n')
     : 'No specific restrictions.'
 }
 
@@ -532,10 +532,10 @@ ${
     : 'No prerequisites.'
 }
 
-## Required Tools
+## Allowed Tools
 ${
-  skill.tools.length > 0
-    ? skill.tools.map((tool) => `- ${tool}`).join('\n')
+  skill.allowedTools.length > 0
+    ? skill.allowedTools.map((tool) => `- ${tool}`).join('\n')
     : 'No specific tools required.'
 }
 
@@ -546,10 +546,10 @@ ${
     : 'No examples provided.'
 }
 
-## Restrictions
+## Restricted Tools
 ${
-  skill.restrictions.length > 0
-    ? skill.restrictions.map((rest) => `- ${rest}`).join('\n')
+  skill.restrictedTools.length > 0
+    ? skill.restrictedTools.map((rest) => `- ${rest}`).join('\n')
     : 'No specific restrictions.'
 }
 
@@ -603,8 +603,8 @@ ${
       responsibilities: role.responsibilities,
       requiredSkills: role.requiredSkills,
       optionalSkills: role.optionalSkills,
-      permissions: role.permissions,
-      restrictions: role.restrictions,
+      allowedTools: role.allowedTools,
+      restrictedTools: role.restrictedTools,
       priority: role.priority,
       created: role.created,
       updated: role.updated,
@@ -620,9 +620,9 @@ ${
       level: skill.level,
       category: skill.category,
       prerequisites: skill.prerequisites,
-      tools: skill.tools,
+      allowedTools: skill.allowedTools,
+      restrictedTools: skill.restrictedTools,
       examples: skill.examples,
-      restrictions: skill.restrictions,
       created: skill.created,
       updated: skill.updated,
       version: skill.version,
@@ -637,7 +637,7 @@ ${
       // Require name and description for valid agent
       const name = frontmatter.name as string;
       const description = frontmatter.description as string;
-      
+
       if (!name || !description) {
         return null;
       }
@@ -675,8 +675,8 @@ ${
         responsibilities: (frontmatter.responsibilities as string[]) || [],
         requiredSkills: (frontmatter.requiredSkills as string[]) || [],
         optionalSkills: (frontmatter.optionalSkills as string[]) || [],
-        permissions: (frontmatter.permissions as string[]) || [],
-        restrictions: (frontmatter.restrictions as string[]) || [],
+        allowedTools: (frontmatter.allowedTools as string[]) || [],
+        restrictedTools: (frontmatter.restrictedTools as string[]) || [],
         priority: (frontmatter.priority as Role['priority']) || 'medium',
         created: (frontmatter.created as string) || new Date().toISOString(),
         updated: frontmatter.updated as string | undefined,
@@ -698,9 +698,9 @@ ${
         level: (frontmatter.level as Skill['level']) || 'beginner',
         category: frontmatter.category as string | undefined,
         prerequisites: (frontmatter.prerequisites as string[]) || [],
-        tools: (frontmatter.tools as string[]) || [],
+        allowedTools: (frontmatter.allowedTools as string[]) || [],
+        restrictedTools: (frontmatter.restrictedTools as string[]) || [],
         examples: (frontmatter.examples as string[]) || [],
-        restrictions: (frontmatter.restrictions as string[]) || [],
         created: (frontmatter.created as string) || new Date().toISOString(),
         updated: frontmatter.updated as string | undefined,
         version: (frontmatter.version as string) || '1.0.0',
