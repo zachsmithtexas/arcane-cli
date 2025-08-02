@@ -2,7 +2,7 @@
 
 ## 0. Branding & UI
 
-- [ ] **Arcane-Branded Home UI with Custom ASCII Art:**  
+- [x] **Arcane-Branded Home UI with Custom ASCII Art:**  
       Replace the default home/landing page branding (previously >GEMINI) with Arcane’s own branding and the following ASCII art, formatted as shown below.  
       _Criteria:_ ASCII art appears exactly as below, with theming/color palette to match Arcane’s brand.  
       _File:_ `/core/ui.js` (or main CLI entry)
