@@ -8,5 +8,7 @@
       ]
     }
   ],
-  "fallbackOrder": []
+  "fallbackOrder": [
+    "openrouter"
+  ]
 }
