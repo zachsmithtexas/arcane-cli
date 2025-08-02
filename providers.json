@@ -1,4 +1,12 @@
 {
-  "providers": [],
+  "providers": [
+    {
+      "id": "openrouter",
+      "enabled": true,
+      "apiKeys": [
+        "sk-or-v1-test123"
+      ]
+    }
+  ],
   "fallbackOrder": []
 }

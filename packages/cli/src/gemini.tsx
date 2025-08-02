@@ -84,7 +84,7 @@ async function handleProviderCommand(argv: CliArgs) {
       break;
     }
     case 'list-models': {
-      const providerId = argv.provider || argv.id;
+      const providerId = argv.id;
       if (!providerId) {
         throw new Error('Provider ID is required for list-models command. Usage: provider list-models <provider>');
       }
@@ -130,7 +130,7 @@ async function handleProviderCommand(argv: CliArgs) {
       break;
     }
     case 'set': {
-      const providerId = argv.provider || argv.id;
+      const providerId = argv.id;
       if (!providerId) {
         throw new Error('Provider ID is required to set the active provider.');
       }
@@ -142,7 +142,7 @@ async function handleProviderCommand(argv: CliArgs) {
       break;
     }
     case 'add': {
-      const providerId = argv.provider || argv.id;
+      const providerId = argv.id;
       if (!providerId) {
         throw new Error('Provider ID is required to add a new provider.');
       }
