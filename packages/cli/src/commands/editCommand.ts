@@ -322,7 +322,7 @@ function printEntitySummary(
       }`,
     );
     console.log(
-      `  Tools: ${skill.tools?.length ? skill.tools.join(', ') : 'None'}`,
+      `  Allowed Tools: ${skill.allowedTools?.length ? skill.allowedTools.join(', ') : 'None'}`,
     );
   }
 
@@ -397,7 +397,8 @@ function getEditableFields(
           name: 'prerequisites',
           description: 'Required prerequisites (JSON array)',
         },
-        { name: 'tools', description: 'Required tools (JSON array)' },
+        { name: 'allowedTools', description: 'Allowed tools (JSON array)' },
+        { name: 'restrictedTools', description: 'Restricted tools (JSON array)' },
         { name: 'examples', description: 'Usage examples (JSON array)' },
         {
           name: 'restrictions',
