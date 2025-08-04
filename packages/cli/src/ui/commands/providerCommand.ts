@@ -32,6 +32,7 @@ export const providerCommand: SlashCommand = {
         
         providerList += `${isActive}**${providerName}** ${status}\n`;
         providerList += `   ${modelsList.length} models available\n`;
+        providerList += `   Aliases: \`${getProviderAliases(providerId).join('`, `')}\`\n`;
         providerList += `   Example: \`${modelsList[0] || 'N/A'}\`\n\n`;
       }
       
@@ -89,14 +90,15 @@ export const providerCommand: SlashCommand = {
     }
     
     // Switch to specific provider
-    const targetProvider = args.toLowerCase();
+    const targetProvider = normalizeProviderName(args.toLowerCase());
     const models = enhancedProviderRouter.getAllModels();
     
     if (!models[targetProvider]) {
+      const availableProviders = Object.keys(models).map(p => getProviderDisplayName(p)).join(', ');
       context.ui.addItem(
         {
           type: MessageType.ERROR,
-          text: `❌ Provider \`${targetProvider}\` not found. Use \`/provider list\` to see available providers.`,
+          text: `❌ Provider \`${args}\` not found.\n\n**Available providers:** ${availableProviders}\n\n💡 **Try:** \`/provider list\` to see all options`,
         },
         Date.now(),
       );
@@ -132,6 +134,39 @@ export const providerCommand: SlashCommand = {
   },
 };
 
+function normalizeProviderName(input: string): string {
+  const aliases: Record<string, string> = {
+    // OpenRouter aliases
+    'openrouter': 'openrouter',
+    'or': 'openrouter',
+    'open': 'openrouter',
+    'router': 'openrouter',
+    
+    // Groq aliases
+    'groq': 'groq',
+    'g': 'groq',
+    
+    // Together.ai aliases
+    'together': 'together',
+    'together.ai': 'together',
+    'togetherai': 'together',
+    't': 'together',
+    
+    // Ollama aliases
+    'ollama': 'ollama',
+    'local': 'ollama',
+    'o': 'ollama',
+    
+    // Gemini aliases
+    'gemini': 'gemini',
+    'google': 'gemini',
+    'gem': 'gemini',
+    'goog': 'gemini'
+  };
+  
+  return aliases[input] || input;
+}
+
 function getProviderForModel(model: string): string {
   if (model.includes(':free') || model.includes('/')) {
     if (model.startsWith('deepseek-r1-distill') || model.startsWith('llama-3.3-70b') || model.startsWith('gemma2-')) {
@@ -149,6 +184,18 @@ function getProviderForModel(model: string): string {
     return 'gemini';
   }
   return 'openrouter';
+}
+
+function getProviderAliases(providerId: string): string[] {
+  const aliasMap: Record<string, string[]> = {
+    'openrouter': ['openrouter', 'or', 'open', 'router'],
+    'groq': ['groq', 'g'],
+    'together': ['together', 'together.ai', 'togetherai', 't'],
+    'ollama': ['ollama', 'local', 'o'],
+    'gemini': ['gemini', 'google', 'gem', 'goog']
+  };
+  
+  return aliasMap[providerId] || [providerId];
 }
 
 function getProviderDisplayName(providerId: string): string {
