@@ -51,7 +51,11 @@
       "name": "Google Gemini",
       "enabled": true,
       "priority": 5,
-      "apiKeys": [],
+      "apiKeys": [
+        "your-gemini-key-1",
+        "your-gemini-key-2",
+        "your-gemini-key-3"
+      ],
       "maxRetries": 3,
       "rateLimitDelay": 1000,
       "fallbackEnabled": false

@@ -32,6 +32,9 @@ import { themeCommand } from '../ui/commands/themeCommand.js';
 import { toolsCommand } from '../ui/commands/toolsCommand.js';
 import { vimCommand } from '../ui/commands/vimCommand.js';
 import { setupGithubCommand } from '../ui/commands/setupGithubCommand.js';
+import { modelCommand } from '../ui/commands/modelCommand.js';
+import { providerCommand } from '../ui/commands/providerCommand.js';
+import { usageCommand } from '../ui/commands/usageCommand.js';
 import { isGitHubRepository } from '../utils/gitUtils.js';
 
 /**
@@ -67,12 +70,15 @@ export class BuiltinCommandLoader implements ICommandLoader {
       initCommand,
       mcpCommand,
       memoryCommand,
+      modelCommand,
       privacyCommand,
+      providerCommand,
       quitCommand,
       restoreCommand(this.config),
       statsCommand,
       themeCommand,
       toolsCommand,
+      usageCommand,
       vimCommand,
       ...(isGitHubRepository() ? [setupGithubCommand] : []),
     ];

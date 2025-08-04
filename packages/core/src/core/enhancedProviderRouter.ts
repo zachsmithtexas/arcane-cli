@@ -181,7 +181,30 @@ export class EnhancedProviderRouter {
     };
 
     const envVar = envVarMap[providerId];
-    return envVar ? process.env[envVar] || null : null;
+    if (!envVar) return null;
+    
+    const envValue = process.env[envVar];
+    if (!envValue) return null;
+    
+    // Support multiple API keys separated by commas
+    const keys = envValue.split(',').map(key => key.trim()).filter(key => key.length > 0);
+    if (keys.length === 0) return null;
+    
+    // If multiple keys, rotate through them
+    if (keys.length > 1) {
+      const currentIndex = this.currentKeyIndex.get(`env_${providerId}`) || 0;
+      const selectedKey = keys[currentIndex];
+      
+      // Rotate for next time
+      if (this.config?.globalSettings.enableAutoRotation) {
+        const nextIndex = (currentIndex + 1) % keys.length;
+        this.currentKeyIndex.set(`env_${providerId}`, nextIndex);
+      }
+      
+      return selectedKey;
+    }
+    
+    return keys[0];
   }
 
   private updateStats(providerId: string, apiKey: string, success: boolean, isRateLimit: boolean, responseTime: number): void {
@@ -370,6 +393,103 @@ export class EnhancedProviderRouter {
 
   setCurrentModel(model: string): void {
     process.env.CURRENT_MODEL = model;
+  }
+  
+  // Usage tracking methods
+  getUsageStats(): {
+    totalRequests: number;
+    totalSuccesses: number;
+    totalFailures: number;
+    totalRateLimits: number;
+    providerBreakdown: Record<string, {
+      requests: number;
+      successes: number;
+      failures: number;
+      rateLimits: number;
+      successRate: number;
+      avgResponseTime: number;
+    }>;
+  } {
+    let totalRequests = 0;
+    let totalSuccesses = 0;
+    let totalFailures = 0;
+    let totalRateLimits = 0;
+    
+    const providerBreakdown: Record<string, any> = {};
+    
+    for (const [providerId, providerStats] of this.stats) {
+      let providerRequests = 0;
+      let providerSuccesses = 0;
+      let providerFailures = 0;
+      let providerRateLimits = 0;
+      let totalResponseTime = 0;
+      
+      for (const [_, keyStats] of providerStats) {
+        providerRequests += keyStats.requests;
+        providerSuccesses += keyStats.successes;
+        providerFailures += keyStats.failures;
+        providerRateLimits += keyStats.rateLimits;
+        totalResponseTime += keyStats.avgResponseTime * keyStats.requests;
+      }
+      
+      totalRequests += providerRequests;
+      totalSuccesses += providerSuccesses;
+      totalFailures += providerFailures;
+      totalRateLimits += providerRateLimits;
+      
+      providerBreakdown[providerId] = {
+        requests: providerRequests,
+        successes: providerSuccesses,
+        failures: providerFailures,
+        rateLimits: providerRateLimits,
+        successRate: providerRequests > 0 ? (providerSuccesses / providerRequests) * 100 : 0,
+        avgResponseTime: providerRequests > 0 ? totalResponseTime / providerRequests : 0
+      };
+    }
+    
+    return {
+      totalRequests,
+      totalSuccesses,
+      totalFailures,
+      totalRateLimits,
+      providerBreakdown
+    };
+  }
+  
+  // Reset usage statistics
+  resetStats(): void {
+    for (const [providerId, providerStats] of this.stats) {
+      for (const [apiKey, _] of providerStats) {
+        providerStats.set(apiKey, {
+          requests: 0,
+          successes: 0,
+          failures: 0,
+          rateLimits: 0,
+          lastUsed: 0,
+          avgResponseTime: 0
+        });
+      }
+    }
+  }
+  
+  // Get current API key being used for a provider (for debugging)
+  getCurrentApiKeyIndex(providerId: string): number {
+    return this.currentKeyIndex.get(providerId) || 0;
+  }
+  
+  // Manually rotate to next API key for a provider
+  rotateApiKey(providerId: string): boolean {
+    if (!this.config) return false;
+    
+    const provider = this.config.providers.find(p => p.id === providerId);
+    if (!provider || provider.apiKeys.length <= 1) return false;
+    
+    const currentIndex = this.currentKeyIndex.get(providerId) || 0;
+    const nextIndex = (currentIndex + 1) % provider.apiKeys.length;
+    this.currentKeyIndex.set(providerId, nextIndex);
+    
+    console.log(`🔄 Manually rotated ${providerId} API key to index ${nextIndex}`);
+    return true;
   }
 }
 
