@@ -15,8 +15,29 @@ import {
   Part,
 } from '@google/genai';
 import { ContentGenerator } from './contentGenerator.js';
-import { providerRouter } from './simpleProviderRouter.js';
+import { enhancedProviderRouter } from './enhancedProviderRouter.js';
 
+interface StandardMessage {
+  role: string;
+  content: string;
+}
+
+interface StandardChoice {
+  message: {
+    content: string;
+  };
+}
+
+interface StandardResponse {
+  choices: StandardChoice[];
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+// Legacy interfaces for compatibility
 interface OpenRouterMessage {
   role: string;
   content: string;
@@ -41,10 +62,10 @@ interface OpenRouterResponse {
  * Provider-aware content generator that routes requests to appropriate providers
  */
 export class ProviderAwareContentGenerator implements ContentGenerator {
-  private geminiGenerator: ContentGenerator;
+  private geminiGenerator: ContentGenerator | null;
   private currentModel: string;
 
-  constructor(geminiGenerator: ContentGenerator, model: string) {
+  constructor(geminiGenerator: ContentGenerator | null, model: string) {
     this.geminiGenerator = geminiGenerator;
     this.currentModel = model;
   }
@@ -52,12 +73,15 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
   async generateContent(
     request: GenerateContentParameters,
   ): Promise<GenerateContentResponse> {
-    // Check if we should use OpenRouter for this model
-    if (providerRouter.shouldUseOpenRouter(this.currentModel)) {
-      return this.generateContentViaOpenRouter(request);
+    // Check if we should use non-Gemini provider for this model
+    if (enhancedProviderRouter.shouldUseNonGeminiProvider(this.currentModel)) {
+      return this.generateContentViaNonGeminiProvider(request);
     }
 
     // Use original Gemini generator
+    if (!this.geminiGenerator) {
+      throw new Error('Gemini generator not available for this model');
+    }
     return this.geminiGenerator.generateContent(request);
   }
 
@@ -65,43 +89,46 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
     request: GenerateContentParameters,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
     // For now, streaming is only supported through Gemini
-    // OpenRouter streaming can be added later
-    if (providerRouter.shouldUseOpenRouter(this.currentModel)) {
+    // Other provider streaming can be added later
+    if (enhancedProviderRouter.shouldUseNonGeminiProvider(this.currentModel)) {
       // Convert single response to async generator
-      const response = await this.generateContentViaOpenRouter(request);
+      const response = await this.generateContentViaNonGeminiProvider(request);
       return (async function* () {
         yield response;
       })();
     }
 
+    if (!this.geminiGenerator) {
+      throw new Error('Gemini generator not available for streaming');
+    }
     return this.geminiGenerator.generateContentStream(request);
   }
 
-  private async generateContentViaOpenRouter(
+  private async generateContentViaNonGeminiProvider(
     request: GenerateContentParameters,
   ): Promise<GenerateContentResponse> {
     try {
-      // Convert Gemini format to OpenRouter format
-      const messages = this.convertGeminiToOpenRouterFormat(request);
+      // Convert Gemini format to standard format
+      const messages = this.convertGeminiToStandardFormat(request);
 
-      // Make OpenRouter API call
-      const response = await providerRouter.makeOpenRouterRequest(
+      // Make request through enhanced router
+      const response = await enhancedProviderRouter.makeRequest(
         this.currentModel,
         messages,
       );
 
       // Convert back to Gemini format
-      return this.convertOpenRouterToGeminiFormat(response);
+      return this.convertStandardToGeminiFormat(response);
     } catch (error) {
-      console.error('OpenRouter request failed:', error);
+      console.error('Multi-provider request failed:', error);
       throw error;
     }
   }
 
-  private convertGeminiToOpenRouterFormat(
+  private convertGeminiToStandardFormat(
     request: GenerateContentParameters,
-  ): OpenRouterMessage[] {
-    const messages: OpenRouterMessage[] = [];
+  ): StandardMessage[] {
+    const messages: StandardMessage[] = [];
 
     // Simple conversion - extract text content and create user message
     try {
@@ -150,12 +177,12 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
     return messages;
   }
 
-  private convertOpenRouterToGeminiFormat(
-    response: OpenRouterResponse,
+  private convertStandardToGeminiFormat(
+    response: StandardResponse,
   ): GenerateContentResponse {
     const choice = response.choices?.[0];
     if (!choice) {
-      throw new Error('Invalid OpenRouter response format');
+      throw new Error('Invalid provider response format');
     }
 
     // Create a response that matches the expected structure
@@ -193,7 +220,7 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
     request: CountTokensParameters,
   ): Promise<CountTokensResponse> {
     // For non-Gemini models, provide estimate
-    if (providerRouter.shouldUseOpenRouter(this.currentModel)) {
+    if (enhancedProviderRouter.shouldUseNonGeminiProvider(this.currentModel)) {
       // Simple token estimation
       let totalText = '';
 
@@ -225,6 +252,9 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
       };
     }
 
+    if (!this.geminiGenerator) {
+      throw new Error('Gemini generator not available for token counting');
+    }
     return this.geminiGenerator.countTokens(request);
   }
 
@@ -232,6 +262,9 @@ export class ProviderAwareContentGenerator implements ContentGenerator {
     request: EmbedContentParameters,
   ): Promise<EmbedContentResponse> {
     // Embeddings only supported through Gemini for now
+    if (!this.geminiGenerator) {
+      throw new Error('Gemini generator not available for embeddings');
+    }
     return this.geminiGenerator.embedContent(request);
   }
 }

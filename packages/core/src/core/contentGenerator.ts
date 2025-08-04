@@ -19,6 +19,7 @@ import { Config } from '../config/config.js';
 import { getEffectiveModel } from './modelCheck.js';
 import { UserTierId } from '../code_assist/types.js';
 import { ProviderAwareContentGenerator } from './providerAwareContentGenerator.js';
+import { enhancedProviderRouter } from './enhancedProviderRouter.js';
 
 /**
  * Interface abstracting the core functionalities for generating content and counting tokens.
@@ -132,6 +133,12 @@ export async function createContentGenerator(
     config.authType === AuthType.USE_GEMINI ||
     config.authType === AuthType.USE_VERTEX_AI
   ) {
+    // Check if this model should use a non-Gemini provider
+    if (enhancedProviderRouter.shouldUseNonGeminiProvider(config.model)) {
+      // Return provider-aware wrapper directly without Gemini setup
+      return new ProviderAwareContentGenerator(null, config.model);
+    }
+
     const googleGenAI = new GoogleGenAI({
       apiKey: config.apiKey === '' ? undefined : config.apiKey,
       vertexai: config.vertexai,

@@ -6,10 +6,33 @@
 
 import { ProviderAdapter } from '../loader.js';
 
+export interface OpenRouterMessage {
+  role: string;
+  content: string;
+}
+
+export interface OpenRouterResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
 export class OpenRouterAdapter implements ProviderAdapter {
   readonly id = 'openrouter';
   private apiKey: string = '';
   private model: string = 'openai/gpt-3.5-turbo';
+  private baseUrl: string;
+
+  constructor(baseUrl = 'https://openrouter.ai/api/v1/chat/completions') {
+    this.baseUrl = baseUrl;
+  }
 
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
@@ -20,48 +43,56 @@ export class OpenRouterAdapter implements ProviderAdapter {
   }
 
   async generateContent(prompt: string): Promise<string> {
+    const messages: OpenRouterMessage[] = [{ role: 'user', content: prompt }];
+    const response = await this.makeRequest(this.model, messages);
+    return response.choices[0]?.message?.content || '';
+  }
+
+  async makeRequest(model: string, messages: OpenRouterMessage[]): Promise<OpenRouterResponse> {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not set');
     }
 
-    const response = await fetch(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://github.com/zachsmithtexas/arcane-cli',
-          'X-Title': 'Arcane CLI',
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 4000,
-        }),
+    const body = {
+      model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 4000,
+      stream: false,
+    };
+
+    console.log(`🔀 Routing ${model} to OpenRouter...`);
+
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://github.com/zachsmithtexas/arcane-cli',
+        'X-Title': 'Arcane CLI',
       },
-    );
+      body: JSON.stringify(body),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `OpenRouter API error (${response.status}): ${errorText}`,
-      );
+      console.error('OpenRouter API error:', errorText);
+      throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json();
+    return response.json();
+  }
 
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      throw new Error('Invalid response format from OpenRouter API');
-    }
-
-    return data.choices[0].message.content;
+  static isOpenRouterModel(model: string): boolean {
+    const openRouterPrefixes = [
+      'deepseek/', 'qwen/', 'mistralai/', 'meta-llama/', 'google/', 'moonshotai/',
+      'nvidia/', 'nousresearch/', 'agentica-org/', 'cognitivecomputations/',
+      'tencent/', 'sarvamai/', 'thudm/', 'shisa-ai/', 'arliai/', 'featherless/',
+      'rekaai/', 'tngtech/', 'microsoft/', 'z-ai/'
+    ];
+    
+    return openRouterPrefixes.some(prefix => model.startsWith(prefix)) || 
+           model.includes(':free');
   }
 }
 
